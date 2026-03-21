@@ -3,36 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GMS Highway v9.0 - Corrida Elite</title>
+    <title>GMS Highway v9.1 - GMS Florestal</title>
     <style>
-        :root { --gold: #f1c40f; --gas: #2ecc71; --danger: #e74c3c; --gms-green: #1b5e20; --road: #333; }
-        body { margin: 0; background: #111; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; color: white; touch-action: none; user-select: none; }
-        canvas { display: block; margin: auto; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        :root { --gold: #f1c40f; --gas: #2ecc71; --danger: #e74c3c; --gms-green: #1b5e20; }
+        body { margin: 0; background: #000; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; color: white; touch-action: none; user-select: none; }
+        canvas { display: block; margin: auto; background: #222; }
         
-        .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); z-index: 100; text-align: center; padding: 20px; transition: 0.5s; }
-        .btn { padding: 15px 35px; font-size: 18px; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; margin: 8px; text-transform: uppercase; transition: 0.2s; display: inline-block; text-decoration: none; }
-        .btn-play { background: var(--gold); color: #000; box-shadow: 0 4px 0 #b7950b; width: 200px; }
-        .btn-share { background: #25d366; color: white; font-size: 14px; padding: 10px 20px; }
+        .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); z-index: 100; text-align: center; }
         
-        #ui { position: absolute; top: 10px; left: 10px; right: 10px; display: none; justify-content: space-between; pointer-events: none; z-index: 50; text-shadow: 2px 2px #000; }
-        .bar-container { width: 120px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; overflow: hidden; border: 1px solid #fff; }
-        #fuel-fill { height: 100%; background: var(--gas); width: 100%; transition: 0.3s; }
+        .btn-play { padding: 20px 50px; font-size: 24px; font-weight: bold; border: none; border-radius: 50px; background: var(--gold); color: #000; cursor: pointer; box-shadow: 0 5px 0 #b7950b; text-transform: uppercase; }
+        .btn-play:active { transform: translateY(3px); box-shadow: 0 2px 0 #b7950b; }
+
+        #ui { position: absolute; top: 15px; left: 15px; right: 15px; display: none; justify-content: space-between; z-index: 10; pointer-events: none; text-shadow: 2px 2px #000; }
+        .fuel-bar { width: 120px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; overflow: hidden; border: 1px solid #fff; margin-top: 5px; }
+        #fuel-fill { height: 100%; background: var(--gas); width: 100%; }
+
+        /* Controles Mobile */
+        .controls { position: absolute; bottom: 40px; width: 100%; display: flex; justify-content: space-between; padding: 0 30px; box-sizing: border-box; pointer-events: none; }
+        .ctrl-btn { width: 80px; height: 80px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; color: white; pointer-events: auto; }
         
-        .version { position: absolute; bottom: 10px; right: 10px; font-size: 10px; opacity: 0.5; }
-        .medal { font-size: 40px; margin: 10px; display: none; }
-        
-        /* Controles Mobile Visuais */
-        .ctrl-btn { position: absolute; bottom: 30px; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-size: 30px; color: white; z-index: 60; }
-        #btn-left { left: 20px; }
-        #btn-right { right: 20px; }
+        .version-tag { position: absolute; bottom: 10px; right: 10px; font-size: 10px; opacity: 0.5; }
     </style>
 </head>
 <body>
 
+<div id="menu-main" class="overlay">
+    <h1 style="color: var(--gold); font-size: 42px; margin: 0;">GMS HIGHWAY</h1>
+    <p style="color: var(--gas); letter-spacing: 2px; margin-bottom: 30px;">DIRIJA RÁPIDO. DESVIE. SOBREVIVA.</p>
+    <button class="btn-play" onclick="initGame()">CORRER AGORA</button>
+    <p style="margin-top: 20px; font-size: 14px; opacity: 0.8;">Criado por Gustavo Moreira</p>
+    <div class="version-tag">v9.1 Build 2026</div>
+</div>
+
+<div id="menu-over" class="overlay" style="display: none;">
+    <h1 style="color: var(--danger); font-size: 32px;">BATIDA DETECTADA!</h1>
+    <h2 id="final-score" style="font-size: 48px; margin: 10px 0;">0</h2>
+    <button class="btn-play" onclick="initGame()">TENTAR NOVAMENTE</button>
+    <p style="margin-top: 20px;"><a href="https://www.instagram.com/eng.florestalgustavoms" target="_blank" style="color: var(--gold); text-decoration: none;">@eng.florestalgustavoms</a></p>
+</div>
+
 <div id="ui">
     <div>
         <div id="km-txt">0 KM/H</div>
-        <div class="bar-container"><div id="fuel-fill"></div></div>
+        <div class="fuel-bar"><div id="fuel-fill"></div></div>
     </div>
     <div style="text-align: right;">
         <div style="color: var(--gold); font-size: 20px;">🪙 <span id="coin-txt">0</span></div>
@@ -40,47 +53,20 @@
     </div>
 </div>
 
-<div id="menu-main" class="overlay">
-    <h1 style="color: var(--gold); margin: 0; font-size: 45px; text-shadow: 3px 3px #000;">GMS HIGHWAY</h1>
-    <p style="letter-spacing: 2px; color: var(--gas); margin-bottom: 20px;">DIRIJA RÁPIDO. DESVIE. SOBREVIVA.</p>
-    <div id="best-scores" style="font-size: 14px; margin-bottom: 15px; color: #aaa;"></div>
-    <button class="btn btn-play" onclick="initGame()">CORRER AGORA</button>
-    <p style="font-size: 12px; opacity: 0.7;">Criado por Gustavo Moreira</p>
-    <div class="version">v9.0 Build 2026</div>
+<div class="controls">
+    <div class="ctrl-btn" onpointerdown="movePlayer(-1)">◀</div>
+    <div class="ctrl-btn" onpointerdown="movePlayer(1)">▶</div>
 </div>
-
-<div id="menu-over" class="overlay" style="display: none;">
-    <h1 style="color: var(--danger); font-size: 35px;">BATIDA DETECTADA!</h1>
-    <div id="medal-display" class="medal"></div>
-    <h2 id="final-score" style="font-size: 40px; margin: 10px 0;">0</h2>
-    
-    <p>COMPARTILHAR:</p>
-    <div style="display: flex; flex-wrap: wrap; justify-content: center;">
-        <a id="wa-share" class="btn btn-share" target="_blank">WhatsApp</a>
-        <button class="btn btn-share" style="background: #1da1f2;" onclick="alert('Link copiado!')">Twitter/X</button>
-    </div>
-    
-    <button class="btn btn-play" style="margin-top: 20px;" onclick="initGame()">TENTAR NOVAMENTE</button>
-    <br>
-    <a href="https://www.instagram.com/eng.florestalgustavoms" target="_blank" style="color: var(--gold); text-decoration: none; font-size: 14px;">@eng.florestalgustavoms</a>
-</div>
-
-<div id="btn-left" class="ctrl-btn" onpointerdown="movePlayer(-1)">◀</div>
-<div id="btn-right" class="ctrl-btn" onpointerdown="movePlayer(1)">▶</div>
 
 <canvas id="gameCanvas"></canvas>
 
 <script>
-/** @type {HTMLCanvasElement} */
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// Configurações e Estado
 let gameActive = false;
-let score, speed, coins, fuel, enemies, items, particles, gameTicks, raf;
-let skyColor = 50; // Para sistema dia/noite
+let score, speed, fuel, coins, enemies, items, particles, raf;
 let player = { lane: 1, x: 0, y: 0, w: 50, h: 85, targetX: 0 };
-const laneWidth = 140;
 
 function resize() {
     canvas.width = Math.min(window.innerWidth, 450);
@@ -91,76 +77,41 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// 1. Sons (Sintetizados para não precisar de arquivos externos)
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playSound(freq, type, duration) {
-    const osc = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    g.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-    osc.connect(g); g.connect(audioCtx.destination);
-    osc.start(); osc.stop(audioCtx.currentTime + duration);
+function updateTargetX() {
+    player.targetX = (player.lane * (canvas.width / 3)) + (canvas.width / 6) - (player.w / 2);
 }
 
-// 2. Controles
 function movePlayer(dir) {
     if(!gameActive) return;
     player.lane = Math.max(0, Math.min(2, player.lane + dir));
     updateTargetX();
 }
-function updateTargetX() {
-    player.targetX = (player.lane * (canvas.width / 3)) + (canvas.width / 6) - (player.w / 2);
-}
 
-// 3. Sistema de Ranking
-function updateRanking(newScore) {
-    let scores = JSON.parse(localStorage.getItem('gms_ranks') || '[]');
-    scores.push(Math.floor(newScore));
-    scores.sort((a,b) => b-a);
-    scores = scores.slice(0, 5);
-    localStorage.setItem('gms_ranks', JSON.stringify(scores));
-    displayRanking();
-}
-function displayRanking() {
-    const scores = JSON.parse(localStorage.getItem('gms_ranks') || '[]');
-    document.getElementById('best-scores').innerHTML = scores.length ? 
-        "TOP 5 RANKING:<br>" + scores.join(" | ") : "";
-}
-displayRanking();
-
-// 4. Inicialização
+// Inicialização segura
 function initGame() {
-    score = 0; speed = 7; coins = 0; fuel = 100; gameTicks = 0;
+    // Reset de estado
+    score = 0; speed = 7; fuel = 100; coins = 0;
     enemies = []; items = []; particles = [];
     player.lane = 1; updateTargetX(); player.x = player.targetX;
-    
+
     document.getElementById("menu-main").style.display = "none";
     document.getElementById("menu-over").style.display = "none";
     document.getElementById("ui").style.display = "flex";
     
     gameActive = true;
+    if (raf) cancelAnimationFrame(raf);
     update();
 }
 
-// 5. Desenho de Veículos com Sombras e Identidade GMS
 function drawVehicle(v) {
     ctx.save();
-    // Sombra (Melhoria 16)
-    ctx.shadowColor = "rgba(0,0,0,0.4)";
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetY = 10;
-    
-    // Corpo
-    ctx.fillStyle = v.color;
+    ctx.fillStyle = v.color || "#444";
     ctx.beginPath(); ctx.roundRect(v.x, v.y, v.w, v.h, 8); ctx.fill();
     
-    // Vidros e Detalhes
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(v.x + 8, v.y + 12, v.w - 16, 20); // Parabrisa
-    
-    // Easter Egg GMS FLORESTAL (Melhoria 12)
-    if(v.isGMS) {
+    // Detalhes GMS FLORESTAL
+    if(v.type === 'truck') {
+        ctx.fillStyle = "rgba(255,255,255,0.2)";
+        ctx.fillRect(v.x+5, v.y+40, v.w-10, v.h-50);
         ctx.fillStyle = "white";
         ctx.font = "bold 10px Arial";
         ctx.save();
@@ -168,164 +119,70 @@ function drawVehicle(v) {
         ctx.rotate(-Math.PI/2);
         ctx.fillText("GMS FLORESTAL", 0, 0);
         ctx.restore();
-        // Carga de madeira
-        ctx.fillStyle = "#5d4037";
-        for(let i=0; i<3; i++) ctx.fillRect(v.x+10+(i*15), v.y+35, 10, v.h-45);
     }
     ctx.restore();
 }
 
-function createExplosion(x, y) {
-    for(let i=0; i<15; i++) {
-        particles.push({
-            x, y, 
-            vx: (Math.random()-0.5)*10, 
-            vy: (Math.random()-0.5)*10, 
-            life: 1, 
-            c: i % 2 === 0 ? "orange" : "red"
-        });
-    }
-    playSound(100, 'sawtooth', 0.5);
-}
-
-function endGame() {
-    gameActive = false;
-    createExplosion(player.x + player.w/2, player.y + player.h/2);
-    
-    setTimeout(() => {
-        document.getElementById("menu-over").style.display = "flex";
-        document.getElementById("final-score").innerText = Math.floor(score);
-        
-        // Medalhas (Melhoria 11)
-        const m = document.getElementById("medal-display");
-        m.style.display = "block";
-        if(score >= 6000) m.innerText = "🥇 OURO";
-        else if(score >= 3000) m.innerText = "🥈 PRATA";
-        else if(score >= 1000) m.innerText = "🥉 BRONZE";
-        else m.style.display = "none";
-
-        updateRanking(score);
-        
-        // WhatsApp Share (Melhoria 14/15)
-        const msg = `Acabei de fazer ${Math.floor(score)} pontos no GMS Highway 🚗🔥\nConsegue bater meu recorde?\n\nJogue também: ${window.location.href}\nCriado por @eng.florestalgustavoms`;
-        document.getElementById("wa-share").href = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-    }, 1000);
-}
-
-// 6. Loop Principal
 function update() {
-    if(!gameActive && particles.length === 0) return;
+    if(!gameActive) return;
 
-    gameTicks++;
-    // Sistema Dia e Noite (Melhoria 5)
-    skyColor = 40 + Math.sin(gameTicks * 0.001) * 30;
-    ctx.fillStyle = `rgb(${skyColor}, ${skyColor}, ${skyColor})`;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Laterais (Cerrado - Melhoria 9)
-    ctx.fillStyle = "#4a5d23"; 
-    ctx.fillRect(0, 0, 20, canvas.height);
-    ctx.fillRect(canvas.width-20, 0, 20, canvas.height);
-
-    // Estrada e Faixas
-    ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    // Fundo
+    ctx.fillStyle = "#222"; ctx.fillRect(0,0,canvas.width, canvas.height);
+    
+    // Faixas
+    ctx.strokeStyle = "rgba(255,255,255,0.3)";
     ctx.setLineDash([40, 40]);
-    ctx.lineDashOffset = -(gameTicks * speed);
+    ctx.lineDashOffset = -(score * 10);
     for(let i=1; i<3; i++) {
         ctx.beginPath(); ctx.moveTo(i*(canvas.width/3), 0); ctx.lineTo(i*(canvas.width/3), canvas.height); ctx.stroke();
     }
 
-    // Player Movement
-    player.x += (player.targetX - player.x) * 0.15;
+    // Suavização Player
+    player.x += (player.targetX - player.x) * 0.2;
     drawVehicle({...player, color: "#e74c3c"});
 
-    // Itens (Moedas e Combustível - Melhoria 1 e 2)
+    // Spawn Inimigos
     if(Math.random() < 0.02) {
         let l = Math.floor(Math.random()*3);
-        items.push({
-            type: Math.random() < 0.8 ? 'coin' : 'fuel',
-            x: (l * (canvas.width/3)) + (canvas.width/6),
-            y: -50, r: 12
-        });
-    }
-
-    items.forEach((it, i) => {
-        it.y += speed * 0.8;
-        ctx.fillStyle = it.type === 'coin' ? var(--gold) : var(--gas);
-        ctx.beginPath(); ctx.arc(it.x, it.y, it.r, 0, Math.PI*2); ctx.fill();
-        
-        // Colisão Item
-        if(Math.hypot(player.x+player.w/2 - it.x, player.y+player.h/2 - it.y) < 40) {
-            if(it.type === 'coin') { coins += 50; playSound(800, 'sine', 0.1); }
-            else { fuel = Math.min(100, fuel + 20); playSound(400, 'sine', 0.2); }
-            items.splice(i, 1);
-        }
-    });
-
-    // Inimigos e Dificuldade Progressiva (Melhoria 4)
-    if(Math.random() < 0.02 + (score/50000)) {
-        let l = Math.floor(Math.random()*3);
-        let isGMS = Math.random() < 0.05; // 5% de chance de ser o caminhão raro
-        let isLarge = Math.random() < 0.1 && score > 2000; // Caminhões que ocupam mais espaço
-        
+        let isTruck = Math.random() > 0.8;
         enemies.push({
             x: (l * (canvas.width/3)) + (canvas.width/6) - 25,
-            y: -150, w: isLarge ? 80 : 50, h: isGMS || isLarge ? 150 : 85,
-            color: isGMS ? "#1b5e20" : "#2980b9",
-            speed: 2 + Math.random()*2,
-            isGMS
+            y: -150, w: 50, h: isTruck ? 150 : 85,
+            color: isTruck ? "#1b5e20" : "#2980b9",
+            type: isTruck ? 'truck' : 'car',
+            speed: 2 + Math.random()*2
         });
     }
 
     enemies.forEach((e, i) => {
         e.y += e.speed + (speed * 0.4);
         drawVehicle(e);
-        
-        // Colisão Veículo
         if(player.x < e.x+e.w-5 && player.x+player.w-5 > e.x && player.y < e.y+e.h-5 && player.y+player.h-5 > e.y) {
-            if(gameActive) endGame();
+            gameActive = false;
+            document.getElementById("menu-over").style.display = "flex";
+            document.getElementById("final-score").innerText = Math.floor(score);
         }
-        
-        if(e.y > canvas.height + 200) {
-            enemies.splice(i, 1);
-            if(e.isGMS) score += 500; // Bônus GMS
-        }
+        if(e.y > canvas.height) enemies.splice(i, 1);
     });
 
-    // Partículas (Melhoria 3 e 16)
-    particles.forEach((p, i) => {
-        p.x += p.vx; p.y += p.vy; p.life -= 0.02;
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.c;
-        ctx.fillRect(p.x, p.y, 5, 5);
-        ctx.globalAlpha = 1;
-        if(p.life <= 0) particles.splice(i, 1);
-    });
+    score += 0.5; fuel -= 0.04;
+    speed = 7 + (score/3000);
 
-    if(gameActive) {
-        score += 0.5; fuel -= 0.035;
-        speed = 7 + (score/2000);
-        
-        // UI
-        document.getElementById("fuel-fill").style.width = fuel + "%";
-        document.getElementById("score-txt").innerText = Math.floor(score);
-        document.getElementById("km-txt").innerText = Math.floor(speed * 15) + " KM/H";
-        document.getElementById("coin-txt").innerText = coins;
+    document.getElementById("fuel-fill").style.width = fuel + "%";
+    document.getElementById("score-txt").innerText = Math.floor(score);
+    document.getElementById("km-txt").innerText = Math.floor(speed * 15) + " KM/H";
 
-        if(fuel <= 0) endGame();
-    }
+    if(fuel <= 0) { gameActive = false; document.getElementById("menu-over").style.display = "flex"; }
 
     raf = requestAnimationFrame(update);
 }
 
-// Swipe Support
-let ts;
-document.addEventListener('touchstart', e => ts = e.touches[0].clientX);
-document.addEventListener('touchmove', e => {
-    if(!ts) return;
-    let te = e.touches[0].clientX;
-    if(ts - te > 50) { movePlayer(-1); ts = null; }
-    if(te - ts > 50) { movePlayer(1); ts = null; }
+// Swipe Support corrigido
+let touchX = 0;
+document.addEventListener('touchstart', e => touchX = e.touches[0].clientX);
+document.addEventListener('touchend', e => {
+    let diff = e.changedTouches[0].clientX - touchX;
+    if(Math.abs(diff) > 40) movePlayer(diff > 0 ? 1 : -1);
 });
 </script>
 </body>
