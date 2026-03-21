@@ -3,81 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Retro Highway - v1.1</title>
+    <title>Retro Highway v1.2</title>
     <style>
         body { 
-            margin: 0; 
-            padding: 0;
-            overflow: hidden; 
-            background: #1a252f; 
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+            margin: 0; padding: 0; overflow: hidden; 
+            background: #1a252f; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex; flex-direction: column; height: 100vh;
         }
-        
-        #game-area {
-            position: relative;
-            flex: 1; /* Ocupa o máximo de espaço possível */
-            background: #4a4a4a;
-            display: flex;
-            justify-content: center;
-        }
-
-        canvas { 
-            height: 100%;
-            width: auto;
-            display: block;
-        }
-
+        #game-area { position: relative; flex: 1; background: #34495e; display: flex; justify-content: center; }
+        canvas { height: 100%; width: auto; display: block; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
         #score { 
-            position: absolute; 
-            top: 10px; 
-            right: 10px; 
-            font-size: 18px; 
-            color: white;
-            background: rgba(0,0,0,0.8); 
-            padding: 5px 12px; 
-            border: 2px solid #f1c40f;
-            border-radius: 5px;
-            z-index: 10;
+            position: absolute; top: 15px; right: 15px; font-size: 20px; color: #f1c40f;
+            background: rgba(0,0,0,0.8); padding: 8px 15px; border: 2px solid #f1c40f;
+            border-radius: 8px; font-weight: bold; z-index: 10;
         }
-
-        /* Painel de Controles */
-        #ui-panel {
-            background: #1a252f;
-            padding: 10px;
-            border-top: 3px solid #f1c40f;
-        }
-
-        #controls {
-            display: flex;
-            justify-content: space-around;
-            padding: 10px 0;
-        }
-
+        #ui-panel { background: #1a252f; padding: 15px; border-top: 4px solid #f1c40f; }
+        #controls { display: flex; justify-content: space-around; align-items: center; }
         .btn-control {
-            width: 70px;
-            height: 70px;
-            background: rgba(255,255,255,0.1);
-            border: 4px solid #fff;
-            border-radius: 50%;
-            color: white;
-            font-size: 35px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            width: 80px; height: 80px; background: rgba(255,255,255,0.1);
+            border: 4px solid #fff; border-radius: 50%; color: white;
+            font-size: 40px; display: flex; justify-content: center; align-items: center;
+            touch-action: manipulation;
         }
-
-        /* Rodapé Ajustado */
-        #footer {
-            text-align: center;
-            font-size: 11px;
-            color: #bdc3c7;
-            margin-top: 8px;
-            padding-bottom: 5px;
-        }
-
+        .btn-control:active { background: #f1c40f; border-color: #f1c40f; color: #1a252f; }
+        #footer { text-align: center; font-size: 12px; color: #bdc3c7; margin-top: 15px; border-top: 1px solid #2c3e50; padding-top: 10px; }
         #footer a { color: #3498db; text-decoration: none; font-weight: bold; }
     </style>
 </head>
@@ -94,7 +43,7 @@
             <div class="btn-control" id="btn-right">→</div>
         </div>
         <div id="footer">
-            v1.1 | Criado por: 
+            🚗 v1.2 | Criado por: 
             <a href="https://www.instagram.com/eng.florestalgustavoms?igsh=MTRqOHE0ZjcyOXdkMg==" target="_blank">
                 @eng.florestalgustavoms
             </a>
@@ -104,20 +53,16 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
-        // Ajuste de resolução
-        canvas.width = 400;
-        canvas.height = 600;
+        canvas.width = 400; canvas.height = 600;
 
         let gameActive = true;
         let score = 0;
         let roadOffset = 0;
         const laneWidth = canvas.width / 3;
 
-        const player = { lane: 1, x: 170, y: 480, w: 60, h: 90, color: '#e74c3c' };
+        const player = { lane: 1, x: 170, y: 470, w: 55, h: 90, color: '#e74c3c' };
         let enemies = [];
 
-        // Controles
         function move(dir) {
             player.lane = Math.max(0, Math.min(2, player.lane + dir));
         }
@@ -130,64 +75,99 @@
         };
 
         function spawnEnemy() {
-            const lane = Math.floor(Math.random() * 3);
+            // LÓGICA ANTI-PAREDÃO:
+            // Conta quantos inimigos estão próximos do topo da tela
+            let occupiedLanes = enemies.filter(en => en.y < 150).map(en => en.lane);
+            
+            let possibleLanes = [0, 1, 2];
+            // Se já houver 2 faixas ocupadas no topo, a terceira DEVE ficar livre
+            if (occupiedLanes.length >= 2) return; 
+
+            // Filtra as faixas que já estão sendo usadas no momento
+            let availableLanes = possibleLanes.filter(l => !occupiedLanes.includes(l));
+            const lane = availableLanes[Math.floor(Math.random() * availableLanes.length)];
+
             enemies.push({
-                x: lane * laneWidth + (laneWidth/2 - 30),
-                y: -100,
-                w: 60,
+                lane: lane,
+                x: lane * laneWidth + (laneWidth/2 - 27),
+                y: -120,
+                w: 55,
                 h: 90,
-                speed: 5 + (score/1000),
-                color: '#2ecc71'
+                speed: 4 + (score/1500),
+                color: ['#2ecc71', '#3498db', '#f39c12'][Math.floor(Math.random()*3)]
             });
         }
 
-        function drawCar(car) {
-            ctx.fillStyle = car.color;
-            ctx.fillRect(car.x, car.y, car.w, car.h);
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.fillRect(car.x + 10, car.y + 15, car.w - 20, 25);
-            ctx.fillStyle = '#f1c40f';
-            ctx.fillRect(car.x+5, car.y+car.h-8, 10, 5);
-            ctx.fillRect(car.x+car.w-15, car.y+car.h-8, 10, 5);
+        function drawVehicle(v) {
+            // Rodas
+            ctx.fillStyle = "#111";
+            ctx.fillRect(v.x-2, v.y+10, 5, 20); ctx.fillRect(v.x+v.w-3, v.y+10, 5, 20);
+            ctx.fillRect(v.x-2, v.y+v.h-30, 5, 20); ctx.fillRect(v.x+v.w-3, v.y+v.h-30, 5, 20);
+
+            // Corpo
+            ctx.fillStyle = v.color;
+            ctx.beginPath();
+            ctx.roundRect(v.x, v.y, v.w, v.h, 10);
+            ctx.fill();
+
+            // Vidros
+            ctx.fillStyle = "#2c3e50";
+            ctx.fillRect(v.x + 8, v.y + 15, v.w - 16, 25); // Para-brisa
+            ctx.fillRect(v.x + 8, v.y + 60, v.w - 16, 15); // Traseiro
+
+            // Detalhes (Luzes)
+            ctx.fillStyle = v === player ? "#f1c40f" : "#c0392b";
+            ctx.fillRect(v.x + 8, v === player ? v.y+v.h-5 : v.y, 10, 4);
+            ctx.fillRect(v.x + v.w - 18, v === player ? v.y+v.h-5 : v.y, 10, 4);
         }
 
         function loop() {
             if(!gameActive) return;
 
-            // Limpar e desenhar estrada
+            // Estrada
             ctx.fillStyle = "#4a4a4a";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Faixas
-            roadOffset = (roadOffset + 8) % 60;
-            ctx.strokeStyle = "white";
+            // Grama lateral
+            ctx.fillStyle = "#27ae60";
+            ctx.fillRect(0, 0, 10, canvas.height);
+            ctx.fillRect(canvas.width-10, 0, 10, canvas.height);
+
+            // Faixas brancas
+            roadOffset = (roadOffset + (5 + score/1000)) % 60;
+            ctx.strokeStyle = "rgba(255,255,255,0.6)";
+            ctx.lineWidth = 4;
             ctx.setLineDash([30, 30]);
             ctx.lineDashOffset = -roadOffset;
             for(let i=1; i<3; i++) {
                 ctx.beginPath(); ctx.moveTo(i*laneWidth, 0); ctx.lineTo(i*laneWidth, canvas.height); ctx.stroke();
             }
 
-            // Jogador
-            let targetX = player.lane * laneWidth + (laneWidth/2 - 30);
-            player.x += (targetX - player.x) * 0.2;
-            drawCar(player);
+            // Jogador (Movimento Suave)
+            let targetX = player.lane * laneWidth + (laneWidth/2 - 27);
+            player.x += (targetX - player.x) * 0.15;
+            drawVehicle(player);
 
-            // Inimigos
+            // Gerar inimigos
             if(Math.random() < 0.02) spawnEnemy();
+
             enemies.forEach((en, i) => {
                 en.y += en.speed;
-                drawCar(en);
+                drawVehicle(en);
                 
-                // Colisão
-                if(player.x < en.x+en.w && player.x+player.w > en.x && player.y < en.y+en.h && player.y+player.h > en.y) {
+                // Colisão (Hitbox ajustada)
+                if(player.x + 5 < en.x + en.w - 5 && player.x + player.w - 5 > en.x + 5 &&
+                   player.y + 5 < en.y + en.h - 5 && player.y + player.h - 5 > en.y + 5) {
                     gameActive = false;
-                    alert("Fim de jogo! Pontos: " + Math.floor(score));
-                    location.reload();
+                    setTimeout(() => {
+                        alert("GAME OVER! 🏎️\nPontos: " + Math.floor(score));
+                        location.reload();
+                    }, 50);
                 }
                 if(en.y > canvas.height) { enemies.splice(i, 1); score += 100; }
             });
 
-            score += 1;
+            score += 0.5;
             document.getElementById('score').innerText = "SCORE: " + Math.floor(score);
             requestAnimationFrame(loop);
         }
