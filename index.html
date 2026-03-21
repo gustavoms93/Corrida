@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GMS Highway v9.2 - Estável</title>
+    <title>GMS Highway v9.3 - Anti-Paredão</title>
     <style>
         :root { --gold: #f1c40f; --gas: #2ecc71; --danger: #e74c3c; }
         body { margin: 0; background: #000; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; color: white; touch-action: none; user-select: none; }
@@ -12,14 +12,12 @@
         .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.92); z-index: 100; text-align: center; }
         .btn-play { padding: 18px 45px; font-size: 22px; font-weight: bold; border: none; border-radius: 50px; background: var(--gold); color: #000; cursor: pointer; box-shadow: 0 5px 0 #b7950b; text-transform: uppercase; }
         
-        /* Botão WhatsApp */
         .btn-whatsapp { background: #25d366; color: white; padding: 12px 25px; border-radius: 30px; text-decoration: none; font-weight: bold; margin: 15px 0; display: inline-flex; align-items: center; gap: 8px; }
         
         #ui { position: absolute; top: 15px; left: 15px; right: 15px; display: none; justify-content: space-between; z-index: 10; pointer-events: none; text-shadow: 2px 2px #000; }
         .fuel-bar { width: 120px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; overflow: hidden; border: 1px solid #fff; }
         #fuel-fill { height: 100%; background: var(--gas); width: 100%; }
 
-        /* Controles */
         .controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; }
         .ctrl-btn { width: 75px; height: 75px; background: rgba(255,255,255,0.15); border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; }
     </style>
@@ -35,11 +33,7 @@
 <div id="menu-over" class="overlay" style="display: none;">
     <h1 style="color: var(--danger);">BATIDA DETECTADA!</h1>
     <h2 style="font-size: 40px; margin: 10px 0;">SCORE: <span id="final-score">0</span></h2>
-    
-    <a id="share-wa" class="btn-whatsapp" target="_blank">
-        Compartilhar no WhatsApp
-    </a>
-
+    <a id="share-wa" class="btn-whatsapp" target="_blank">Compartilhar no WhatsApp</a>
     <button class="btn-play" onclick="initGame()">TENTAR NOVAMENTE</button>
 </div>
 
@@ -90,12 +84,10 @@ function movePlayer(dir) {
 function initGame() {
     score = 0; speed = 7; fuel = 100; enemies = [];
     player.lane = 1; updateTargetX(); player.x = player.targetX;
-    
     document.getElementById("menu-main").style.display = "none";
     document.getElementById("menu-over").style.display = "none";
     document.getElementById("ui").style.display = "flex";
     document.getElementById("game-ctrls").style.display = "flex";
-    
     gameActive = true;
     update();
 }
@@ -103,7 +95,6 @@ function initGame() {
 function drawVehicle(v) {
     ctx.fillStyle = v.color || "#444";
     ctx.beginPath(); ctx.roundRect(v.x, v.y, v.w, v.h, 8); ctx.fill();
-    // Vidro
     ctx.fillStyle = "rgba(0,0,0,0.5)";
     ctx.fillRect(v.x+8, v.y+10, v.w-16, 20);
     
@@ -128,18 +119,23 @@ function update() {
     player.x += (player.targetX - player.x) * 0.2;
     drawVehicle({...player, color: "#e74c3c"});
 
-    // CORREÇÃO DE SOBREPOSIÇÃO (Spawn inteligente)
+    // --- LÓGICA DE SPAWN MELHORADA ---
     if(Math.random() < 0.02) {
         let lane = Math.floor(Math.random()*3);
-        // Só cria se não houver carro próximo no topo daquela faixa
-        let canSpawn = !enemies.some(e => e.lane === lane && e.y < 200);
         
-        if(canSpawn) {
+        // 1. Evita sobreposição na mesma faixa (Distância de 250px)
+        let tooCloseInLane = enemies.some(e => e.lane === lane && e.y < 250);
+        
+        // 2. Evita Paredão (Não deixa 3 carros na mesma altura)
+        let enemiesInTopArea = enemies.filter(e => e.y < 100);
+        let wouldCreateWall = enemiesInTopArea.length >= 2;
+
+        if(!tooCloseInLane && !wouldCreateWall) {
             let isTruck = Math.random() > 0.8;
             enemies.push({
                 lane: lane,
                 x: (lane * (canvas.width/3)) + (canvas.width/6) - 25,
-                y: -180, w: 50, h: isTruck ? 150 : 85,
+                y: -200, w: 50, h: isTruck ? 150 : 85,
                 color: isTruck ? "#1b5e20" : "#2980b9",
                 type: isTruck ? 'truck' : 'car',
                 speed: 2 + Math.random()*2
@@ -151,17 +147,20 @@ function update() {
         e.y += e.speed + (speed * 0.4);
         drawVehicle(e);
         
-        // Colisão
-        if(player.x < e.x+e.w-5 && player.x+player.w-5 > e.x && player.y < e.y+e.h-5 && player.y+player.h-5 > e.y) {
+        // Hitbox aprimorada (v.w-10 para ser mais generoso nas laterais)
+        if(player.x + 5 < e.x + e.w - 5 && 
+           player.x + player.w - 5 > e.x + 5 && 
+           player.y + 5 < e.y + e.h - 5 && 
+           player.y + player.h - 5 > e.y + 5) {
             gameOver();
         }
         if(e.y > canvas.height) enemies.splice(i, 1);
     });
 
-    score += 0.5; fuel -= 0.04;
+    score += 0.5; fuel -= 0.035;
     document.getElementById("fuel-fill").style.width = fuel + "%";
     document.getElementById("score-txt").innerText = Math.floor(score);
-    document.getElementById("km-txt").innerText = Math.floor(speed * 15) + " KM/H";
+    document.getElementById("km-txt").innerText = Math.floor(speed * 15 + (score/20)) + " KM/H";
 
     if(fuel <= 0) gameOver();
     raf = requestAnimationFrame(update);
@@ -171,8 +170,6 @@ function gameOver() {
     gameActive = false;
     document.getElementById("menu-over").style.display = "flex";
     document.getElementById("final-score").innerText = Math.floor(score);
-    
-    // Configura o link do WhatsApp
     const msg = `Fiz ${Math.floor(score)} pontos no GMS Highway! 🚗🔥\nConsegue bater meu recorde?\n\nJogue aqui: ${window.location.href}`;
     document.getElementById("share-wa").href = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
 }
