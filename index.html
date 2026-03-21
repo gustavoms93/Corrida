@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Retro Highway v4</title>
+<title>Retro Highway v5</title>
 
 <style>
 
@@ -48,13 +48,27 @@ left:10px;
 font-size:18px;
 }
 
+#fuelBar{
+width:150px;
+height:10px;
+background:#444;
+margin-top:5px;
+}
+
+#fuel{
+height:10px;
+background:#2ecc71;
+width:100%;
+}
+
 </style>
 </head>
 
 <body>
 
 <div id="menu">
-<h1>RETRO HIGHWAY v4</h1>
+
+<h1>RETRO HIGHWAY v5</h1>
 
 <p>Record: <span id="record">0</span></p>
 
@@ -71,10 +85,12 @@ font-size:18px;
 <div id="ui">
 
 <div id="speed">0 KM/H</div>
-
 <div id="score">0</div>
-
 <div id="coins">🪙 0</div>
+
+<div id="fuelBar">
+<div id="fuel"></div>
+</div>
 
 </div>
 
@@ -82,8 +98,8 @@ font-size:18px;
 
 <script>
 
-const canvas = document.getElementById("game")
-const ctx = canvas.getContext("2d")
+const canvas=document.getElementById("game")
+const ctx=canvas.getContext("2d")
 
 canvas.width=400
 canvas.height=window.innerHeight
@@ -93,12 +109,18 @@ let running=false
 let score=0
 let speed=8
 let coins=0
+let fuel=100
 
 let enemies=[]
+let items=[]
+let rain=[]
 
 let laneWidth=133
 
 let night=false
+
+let explosion=false
+let explosionFrame=0
 
 let bonusMsg=""
 let bonusTimer=0
@@ -116,6 +138,15 @@ function startGame(){
 document.getElementById("menu").style.display="none"
 
 running=true
+
+for(let i=0;i<80;i++){
+
+rain.push({
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height
+})
+
+}
 
 loop()
 
@@ -155,7 +186,6 @@ startX=e.touches[0].clientX
 function drawCar(v,color){
 
 ctx.fillStyle=color
-
 ctx.fillRect(v.x,v.y,v.w,v.h)
 
 }
@@ -168,11 +198,9 @@ ctx.shadowBlur=15
 ctx.shadowColor="rgba(0,255,150,0.8)"
 
 ctx.fillStyle="#ecf0f1"
-
 ctx.fillRect(v.x,v.y,v.w,v.h)
 
 ctx.fillStyle="#bdc3c7"
-
 ctx.fillRect(v.x,v.y+v.h-60,v.w,60)
 
 let grad=ctx.createLinearGradient(v.x,v.y,v.x+v.w,v.y+v.h)
@@ -185,9 +213,7 @@ ctx.fillStyle=grad
 ctx.beginPath()
 
 ctx.moveTo(v.x+v.w/2,v.y+40)
-
 ctx.quadraticCurveTo(v.x+v.w+10,v.y+80,v.x+v.w/2,v.y+120)
-
 ctx.quadraticCurveTo(v.x-10,v.y+80,v.x+v.w/2,v.y+40)
 
 ctx.fill()
@@ -205,19 +231,12 @@ let lane=Math.floor(Math.random()*3)
 enemies.push({
 
 type:"gms",
-
 lane:lane,
-
 x:lane*laneWidth+40,
-
 y:-200,
-
 w:70,
-
 h:200,
-
 speed:5,
-
 bonus:false
 
 })
@@ -231,13 +250,11 @@ let lane=Math.floor(Math.random()*3)
 let r=Math.random()
 
 let type="car"
-
 let h=90
 
 if(r>0.8){
 
 type="truck"
-
 h=180
 
 }
@@ -251,20 +268,78 @@ type="police"
 enemies.push({
 
 type:type,
-
 lane:lane,
-
 x:lane*laneWidth+40,
-
 y:-150,
-
 w:55,
-
 h:h,
-
 speed:5
 
 })
+
+}
+
+function spawnItem(){
+
+let lane=Math.floor(Math.random()*3)
+
+items.push({
+
+type:Math.random()<0.7?"coin":"fuel",
+lane:lane,
+x:lane*laneWidth+50,
+y:-40
+
+})
+
+}
+
+function drawRain(){
+
+ctx.strokeStyle="rgba(200,200,255,0.5)"
+
+rain.forEach(r=>{
+
+ctx.beginPath()
+
+ctx.moveTo(r.x,r.y)
+
+ctx.lineTo(r.x,r.y+10)
+
+ctx.stroke()
+
+r.y+=15
+
+if(r.y>canvas.height){
+
+r.y=0
+r.x=Math.random()*canvas.width
+
+}
+
+})
+
+}
+
+function drawExplosion(x,y){
+
+ctx.fillStyle="orange"
+
+ctx.beginPath()
+
+ctx.arc(x,y,explosionFrame*5,0,Math.PI*2)
+
+ctx.fill()
+
+explosionFrame++
+
+if(explosionFrame>20){
+
+alert("FIM DA LINHA Score:"+Math.floor(score))
+
+location.reload()
+
+}
 
 }
 
@@ -272,9 +347,12 @@ function loop(){
 
 if(!running)return
 
-ctx.fillStyle=night?"#111":"#444"
+night=(Math.floor(score/5000)%2!==0)
 
+ctx.fillStyle=night?"#111":"#444"
 ctx.fillRect(0,0,canvas.width,canvas.height)
+
+drawRain()
 
 ctx.strokeStyle="white"
 
@@ -285,31 +363,27 @@ ctx.lineDashOffset=-(score*2)
 for(let i=1;i<3;i++){
 
 ctx.beginPath()
-
 ctx.moveTo(i*laneWidth,0)
-
 ctx.lineTo(i*laneWidth,canvas.height)
-
 ctx.stroke()
 
 }
 
 let targetX=player.lane*laneWidth+40
 
-player.x+= (targetX-player.x)*0.2
+player.x+=(targetX-player.x)*0.2
 
 drawCar(player,"red")
 
 if(Math.random()<0.02)spawnEnemy()
+if(Math.random()<0.01)spawnItem()
 
 enemies.forEach((e,i)=>{
 
 e.y+=e.speed+(speed*0.2)
 
 if(e.type==="car")drawCar(e,"blue")
-
 if(e.type==="truck")drawCar(e,"gray")
-
 if(e.type==="police")drawCar(e,"black")
 
 if(e.type==="gms"){
@@ -317,7 +391,6 @@ if(e.type==="gms"){
 drawGMSTruck(e)
 
 let dx=Math.abs(player.x-e.x)
-
 let dy=Math.abs(player.y-e.y)
 
 if(dx<90 && dy<120 && !e.bonus){
@@ -344,11 +417,8 @@ e.type!=="gms"
 
 ){
 
+explosion=true
 running=false
-
-alert("FIM DA LINHA Score:"+Math.floor(score))
-
-location.reload()
 
 }
 
@@ -362,22 +432,59 @@ score+=100
 
 })
 
-score+=1
+items.forEach((it,i)=>{
 
+it.y+=speed
+
+ctx.fillStyle=it.type==="coin"?"gold":"green"
+
+ctx.beginPath()
+
+ctx.arc(it.x,it.y,10,0,Math.PI*2)
+
+ctx.fill()
+
+if(
+
+player.x<it.x+10 &&
+player.x+player.w>it.x &&
+player.y<it.y+10 &&
+player.y+player.h>it.y
+
+){
+
+if(it.type==="coin")coins+=10
+if(it.type==="fuel")fuel=Math.min(100,fuel+30)
+
+items.splice(i,1)
+
+}
+
+})
+
+fuel-=0.02
+
+if(fuel<=0){
+
+alert("Sem combustível!")
+
+location.reload()
+
+}
+
+document.getElementById("fuel").style.width=fuel+"%"
+
+score+=1
 speed=8+(score/2000)
 
 document.getElementById("score").innerText=Math.floor(score)
-
 document.getElementById("speed").innerText=Math.floor(speed*15)+" KM/H"
-
 document.getElementById("coins").innerText="🪙 "+coins
 
 if(bonusTimer>0){
 
 ctx.fillStyle="yellow"
-
 ctx.font="bold 28px Arial"
-
 ctx.textAlign="center"
 
 ctx.fillText(bonusMsg,canvas.width/2,canvas.height/2)
@@ -386,7 +493,15 @@ bonusTimer--
 
 }
 
+if(explosion){
+
+drawExplosion(player.x+30,player.y+30)
+
+}else{
+
 requestAnimationFrame(loop)
+
+}
 
 }
 
