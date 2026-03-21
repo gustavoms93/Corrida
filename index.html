@@ -3,18 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Asphalt Escape v10.5</title>
+    <title>Asphalt Escape v10.6</title>
     <style>
         :root { --gms-green: #1b5e20; --gold: #f1c40f; --danger: #e74c3c; --road: #222; }
         body { margin: 0; background: #000; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; color: white; touch-action: none; user-select: none; }
         canvas { display: block; margin: auto; background: var(--road); }
+        
         .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.95); z-index: 100; text-align: center; padding: 20px; }
         .btn-main { padding: 18px 40px; font-size: 20px; font-weight: bold; border: none; border-radius: 50px; background: var(--gold); color: #000; cursor: pointer; box-shadow: 0 5px 0 #b7950b; text-transform: uppercase; margin: 10px; }
+        
         #ui { position: absolute; top: 15px; left: 15px; right: 15px; display: none; justify-content: space-between; z-index: 10; pointer-events: none; text-shadow: 2px 2px #000; }
         .fuel-bar { width: 120px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; overflow: hidden; border: 1px solid #fff; }
         #fuel-fill { height: 100%; background: #2ecc71; width: 100%; }
-        .controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-between; padding: 0 25px; box-sizing: border-box; }
-        .ctrl-btn { width: 75px; height: 75px; background: rgba(255,255,255,0.1); border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; opacity: 0.7; }
+        
+        /* Controles - Estilo Gamepad */
+        .controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; z-index: 50; }
+        .dir-controls { display: flex; gap: 15px; }
+        .ctrl-btn { width: 70px; height: 70px; background: rgba(255,255,255,0.1); border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; opacity: 0.7; pointer-events: auto; }
+        
+        /* Pedal de Acelerador */
+        .pedal-btn { width: 80px; height: 110px; background: #444; border: 3px solid #777; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; color: #fff; pointer-events: auto; box-shadow: inset 0 0 10px #000; }
+        .pedal-btn:active { background: #222; transform: scale(0.95); }
+
         .gms-msg { position: absolute; top: 20%; width: 100%; text-align: center; font-weight: bold; color: var(--gold); font-size: 24px; display: none; z-index: 100; text-shadow: 2px 2px #000; }
         .ranking-list { font-size: 14px; color: var(--gold); list-style: none; padding: 0; margin: 10px 0; }
     </style>
@@ -26,13 +36,9 @@
 <div id="menu-main" class="overlay">
     <h1 style="color: var(--gold); font-size: 42px; margin: 0;">ASPHALT ESCAPE</h1>
     <p style="color: var(--gms-green); font-weight: bold; margin-bottom: 15px;">"Dirija rápido. Desvie. Sobreviva."</p>
-    <div id="ranking-container">
-        <p style="margin: 0; font-size: 12px; opacity: 0.7;">TOP 5 RECORDES:</p>
-        <ul id="ranking-list" class="ranking-list"></ul>
-    </div>
+    <ul id="ranking-list" class="ranking-list"></ul>
     <button class="btn-main" onclick="initGame()">CORRER AGORA</button>
-    <div style="font-size: 11px; margin-top: 10px;">Criado por Gustavo Moreira | @eng.florestalgustavoms</div>
-    <div style="position: absolute; bottom: 10px; opacity: 0.4; font-size: 10px;">v10.5</div>
+    <div style="font-size: 11px; margin-top: 10px;">@eng.florestalgustavoms | v10.6</div>
 </div>
 
 <div id="menu-over" class="overlay" style="display: none;">
@@ -55,8 +61,14 @@
 </div>
 
 <div class="controls" id="game-ctrls" style="display:none">
-    <div class="ctrl-btn" onpointerdown="movePlayer(-1)">◀</div>
-    <div class="ctrl-btn" onpointerdown="movePlayer(1)">▶</div>
+    <div class="dir-controls">
+        <div class="ctrl-btn" onpointerdown="movePlayer(-1)">◀</div>
+        <div class="ctrl-btn" onpointerdown="movePlayer(1)">▶</div>
+    </div>
+    <div class="pedal-btn" id="gas-pedal">
+        <span>GO!</span>
+        <small>GAS</small>
+    </div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -66,56 +78,47 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 let gameActive = false, score = 0, speed = 7, fuel = 100, coins = 0;
-let enemies = [], items = [], scenery = [], raf;
+let enemies = [], items = [], scenery = [], raf, isAccelerating = false;
 let player = { lane: 1, x: 0, y: 0, w: 50, h: 85, targetX: 0 };
 
 function resize() {
     canvas.width = Math.min(window.innerWidth, 450);
     canvas.height = window.innerHeight;
-    player.y = canvas.height - 180;
+    player.y = canvas.height - 200;
     updateTargetX();
 }
 window.addEventListener('resize', resize);
 resize();
 
-// --- SISTEMA DE COMPARTILHAMENTO v10.5 ---
+// Eventos do Pedal
+const gasPedal = document.getElementById("gas-pedal");
+gasPedal.addEventListener("pointerdown", () => isAccelerating = true);
+gasPedal.addEventListener("pointerup", () => isAccelerating = false);
+gasPedal.addEventListener("pointerleave", () => isAccelerating = false);
+
 async function shareChallenge() {
     const gameUrl = "https://gustavoms93.github.io/Corrida/";
-    // Removido o link da string para evitar duplicidade no WhatsApp
-    const shareText = `Asphalt Escape v10.5 🚗🔥\n\nDesafio você a bater minha pontuação!\nMinha pontuação: ${Math.floor(score)}\n\nCriado por @eng.florestalgustavoms`;
-
+    const shareText = `Asphalt Escape v10.6 🚗🔥\nMinha pontuação: ${Math.floor(score)}\n\nJogue aqui: ${gameUrl}`;
     if (navigator.share) {
-        try {
-            await navigator.share({
-                title: 'Asphalt Escape v10.5',
-                text: shareText,
-                url: gameUrl // O link vai aqui apenas uma vez
-            });
-        } catch (err) { console.log("Erro ao compartilhar"); }
+        try { await navigator.share({ title: 'Asphalt Escape v10.6', text: shareText, url: gameUrl }); } catch (err) {}
     } else {
-        const fullMsg = encodeURIComponent(shareText + "\n\nJogue aqui: " + gameUrl);
-        window.open(`https://api.whatsapp.com/send?text=${fullMsg}`);
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`);
     }
 }
 
 function revive() {
     if(coins >= 300) {
-        coins -= 300;
-        document.getElementById("coin-txt").innerText = coins;
-        fuel = 100;
-        enemies = [];
+        coins -= 300; document.getElementById("coin-txt").innerText = coins;
+        fuel = 100; enemies = [];
         document.getElementById("menu-over").style.display = "none";
         document.getElementById("ui").style.display = "flex";
-        gameActive = true;
-        update();
+        gameActive = true; update();
     }
 }
 
 function loadRanking() {
-    try {
-        const ranks = JSON.parse(localStorage.getItem('gms_ranks') || "[]");
-        document.getElementById("ranking-list").innerHTML = ranks.map((s, i) => `<li>${i+1}º - ${s} pts</li>`).join("");
-    } catch(e) {}
+    const ranks = JSON.parse(localStorage.getItem('gms_ranks') || "[]");
+    document.getElementById("ranking-list").innerHTML = ranks.map((s, i) => `<li>${i+1}º - ${s} pts</li>`).join("");
 }
 loadRanking();
 
@@ -123,7 +126,7 @@ function updateTargetX() { player.targetX = (player.lane * (canvas.width / 3)) +
 function movePlayer(dir) { if(!gameActive) return; player.lane = Math.max(0, Math.min(2, player.lane + dir)); updateTargetX(); }
 
 function initGame() {
-    score = 0; speed = 7; fuel = 100; coins = 0; enemies = []; items = []; scenery = [];
+    score = 0; speed = 7; fuel = 100; coins = 0; enemies = []; items = []; scenery = []; isAccelerating = false;
     player.lane = 1; updateTargetX(); player.x = player.targetX;
     document.getElementById("coin-txt").innerText = "0";
     document.getElementById("menu-main").style.display = "none";
@@ -156,6 +159,7 @@ function update() {
         if(s.y > canvas.height) scenery.splice(i, 1);
     });
 
+    // Estrada
     ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.setLineDash([40, 60]);
     ctx.lineDashOffset = -(score * 10);
     for(let i=1; i<3; i++) {
@@ -165,8 +169,8 @@ function update() {
     player.x += (player.targetX - player.x) * 0.2;
     drawVehicle({...player, color: "#e74c3c"});
 
+    // Itens
     if(Math.random() < 0.03) items.push({ type: Math.random() > 0.8 ? 'gas' : 'coin', x: (Math.floor(Math.random()*3) * (canvas.width/3)) + (canvas.width/6), y: -50 });
-    
     items.forEach((it, i) => {
         it.y += speed; ctx.font = "20px Arial"; ctx.fillText(it.type === 'coin' ? '🪙' : '⛽', it.x-10, it.y);
         if(Math.hypot(player.x+25 - it.x, player.y+40 - it.y) < 40) {
@@ -176,12 +180,11 @@ function update() {
         }
     });
 
-    // ANTI-PAREDÃO v10.5
+    // Spawn Inimigos
     if(Math.random() < 0.02 + (score/100000)) {
         let lane = Math.floor(Math.random()*3);
-        // Garante que nunca existam carros ocupando todas as pistas na mesma altura
-        let hazardZoneEnemies = enemies.filter(e => e.y < 400);
-        if(!enemies.some(e => e.lane === lane && e.y < 500) && hazardZoneEnemies.length < 2) {
+        let topEnemies = enemies.filter(e => e.y < 350);
+        if(!enemies.some(e => e.lane === lane && e.y < 450) && topEnemies.length < 2) {
             let isEE = Math.random() < 0.02;
             enemies.push({
                 lane, x: (lane * (canvas.width / 3)) + (canvas.width / 6) - 25,
@@ -194,40 +197,34 @@ function update() {
     enemies.forEach((e, i) => {
         e.y += e.speed + (speed * 0.4); drawVehicle(e);
         if(player.x+10 < e.x+e.w-10 && player.x+player.w-10 > e.x+10 && player.y+10 < e.y+e.h-10 && player.y+player.h-10 > e.y+10) {
-            gameOver();
-        }
-        if(e.isEasterEgg && e.y > player.y && !e.done) {
-            score += 5000; e.done = true;
-            document.getElementById("msg-box").style.display = "block";
-            setTimeout(() => document.getElementById("msg-box").style.display = "none", 2500);
+            gameActive = false; gameOver();
         }
         if(e.y > canvas.height) enemies.splice(i, 1);
     });
 
     if(gameActive) {
-        score += 1; fuel -= 0.035;
-        speed = 7 + (score/6000);
+        // Lógica do Acelerador
+        let accel = isAccelerating ? 2 : 1;
+        score += 1 * accel;
+        fuel -= 0.035 * accel;
+        speed = (7 + (score/6000)) * (isAccelerating ? 1.3 : 1);
+
         document.getElementById("fuel-fill").style.width = fuel + "%";
         document.getElementById("score-txt").innerText = Math.floor(score);
         document.getElementById("km-txt").innerText = Math.floor(speed * 15) + " KM/H";
-        if(fuel <= 0) gameOver();
+        if(fuel <= 0) { gameActive = false; gameOver(); }
     }
     raf = requestAnimationFrame(update);
 }
 
 function gameOver() {
-    gameActive = false;
     document.getElementById("menu-over").style.display = "flex";
     document.getElementById("final-score-val").innerText = Math.floor(score);
     let ranks = JSON.parse(localStorage.getItem('gms_ranks') || "[]");
-    ranks.push(Math.floor(score));
-    ranks.sort((a,b) => b-a);
+    ranks.push(Math.floor(score)); ranks.sort((a,b) => b-a);
     localStorage.setItem('gms_ranks', JSON.stringify(ranks.slice(0, 5)));
     loadRanking();
     document.getElementById("btn-revive").style.display = (coins >= 300) ? "block" : "none";
-    let m = "🥉 BRONZE";
-    if(score >= 6000) m = "🥇 OURO"; else if(score >= 3000) m = "🥈 PRATA";
-    document.getElementById("medal-txt").innerText = m;
 }
 </script>
 </body>
