@@ -1,210 +1,396 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Highway Elite v3.5</title>
-    <style>
-        :root { --gold: #f1c40f; --blue: #3498db; --danger: #e74c3c; }
-        body { margin: 0; background: #000; font-family: 'Segoe UI', sans-serif; color: white; overflow: hidden; touch-action: none; }
-        
-        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; flex-direction: column; }
-        canvas { background: #333; flex: 1; width: 100%; max-width: 450px; margin: auto; display: block; }
-        
-        /* HUD Superior */
-        #score-box { position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px; border-left: 4px solid var(--gold); pointer-events: none; }
-        
-        /* Menus */
-        .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; text-align: center; padding: 20px; }
-        
-        button { padding: 15px 35px; font-size: 20px; font-weight: bold; border: none; border-radius: 50px; background: var(--gold); color: #000; cursor: pointer; margin: 10px; transition: 0.2s; }
-        button:active { transform: scale(0.95); }
-        
-        .share-btn { background: var(--blue); color: white; font-size: 16px; padding: 10px 20px; }
-        .wa-btn { background: #25d366; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retro Highway v4</title>
 
-        #touch-area { width: 100%; height: 100px; background: #111; border-top: 2px solid #333; display: flex; align-items: center; justify-content: center; color: #666; font-size: 12px; letter-spacing: 2px; }
-        
-        .insta { color: var(--blue); text-decoration: none; font-size: 14px; margin-top: 20px; }
-    </style>
+<style>
+
+body{
+margin:0;
+background:#000;
+font-family:Arial;
+overflow:hidden;
+color:white;
+}
+
+canvas{
+display:block;
+margin:auto;
+background:#333;
+}
+
+#menu{
+position:absolute;
+inset:0;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+background:#000;
+z-index:10;
+}
+
+button{
+padding:20px 40px;
+font-size:22px;
+border:none;
+border-radius:40px;
+background:#f1c40f;
+cursor:pointer;
+}
+
+#ui{
+position:absolute;
+top:10px;
+left:10px;
+font-size:18px;
+}
+
+</style>
 </head>
+
 <body>
 
-<div id="game-container">
-    <div id="start-menu" class="overlay">
-        <h1 style="color: var(--gold); font-size: 42px; margin-bottom: 0;">ELITE ROAD</h1>
-        <p style="margin-bottom: 30px; opacity: 0.7;">v3.5 Professional Edition</p>
-        <button onclick="initGame()">INICIAR MOTOR</button>
-        <a href="https://www.instagram.com/eng.florestalgustavoms" class="insta" target="_blank">@eng.florestalgustavoms</a>
-    </div>
+<div id="menu">
+<h1>RETRO HIGHWAY v4</h1>
 
-    <div id="game-over-menu" class="overlay" style="display: none;">
-        <h2 style="color: var(--danger); font-size: 32px;">BATIDA DETECTADA!</h2>
-        <p id="final-score" style="font-size: 24px; margin: 5px 0;"></p>
-        <p id="new-record" style="color: var(--gold); font-weight: bold; display: none;">NOVO RECORDE!</p>
-        
-        <div style="margin: 20px 0;">
-            <p style="font-size: 14px; margin-bottom: 10px;">COMPARTILHAR PONTUAÇÃO:</p>
-            <button class="share-btn wa-btn" onclick="shareWhatsApp()">WhatsApp</button>
-            <button class="share-btn" onclick="shareTwitter()">Twitter/X</button>
-        </div>
-        
-        <button onclick="location.reload()">TENTAR NOVAMENTE</button>
-    </div>
+<p>Record: <span id="record">0</span></p>
 
-    <div id="score-box">
-        <div id="km" style="font-size: 12px; opacity: 0.8;">0 KM/H</div>
-        <div id="points" style="font-size: 26px; color: var(--gold); font-weight: bold;">0</div>
-    </div>
+<button onclick="startGame()">CORRER</button>
 
-    <canvas id="gameCanvas"></canvas>
-    <div id="touch-area">◄ DESLIZE PARA CONTROLAR ►</div>
+<p>Criado por Gustavo Moreira</p>
+
+<a href="https://www.instagram.com/eng.florestalgustavoms" target="_blank">
+@eng.florestalgustavoms
+</a>
+
 </div>
 
+<div id="ui">
+
+<div id="speed">0 KM/H</div>
+
+<div id="score">0</div>
+
+<div id="coins">🪙 0</div>
+
+</div>
+
+<canvas id="game"></canvas>
+
 <script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-let gameRunning = false;
-let score = 0;
-let speed = 8;
-let enemies = [];
-let particles = [];
-const laneWidth = 133;
 
-let player = { lane: 1, x: 170, y: 0, w: 55, h: 95, color: '#e74c3c' };
+const canvas = document.getElementById("game")
+const ctx = canvas.getContext("2d")
 
-// --- Áudio (Motor) ---
-let audioCtx, osc, gain;
-function startMotor() {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    osc = audioCtx.createOscillator();
-    gain = audioCtx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(50, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start();
+canvas.width=400
+canvas.height=window.innerHeight
+
+let running=false
+
+let score=0
+let speed=8
+let coins=0
+
+let enemies=[]
+
+let laneWidth=133
+
+let night=false
+
+let bonusMsg=""
+let bonusTimer=0
+
+let player={
+lane:1,
+x:170,
+y:canvas.height-140,
+w:55,
+h:90
 }
 
-function initGame() {
-    document.getElementById("start-menu").style.display = "none";
-    canvas.width = 400;
-    canvas.height = window.innerHeight - 100;
-    player.y = canvas.height - 160;
-    if(!audioCtx) startMotor();
-    gameRunning = true;
-    requestAnimationFrame(loop);
+function startGame(){
+
+document.getElementById("menu").style.display="none"
+
+running=true
+
+loop()
+
 }
 
-// --- Controles Touch ---
-let startTouchX = 0;
-document.addEventListener('touchstart', e => startTouchX = e.touches[0].clientX);
-document.addEventListener('touchmove', e => {
-    if(!gameRunning) return;
-    let moveX = e.touches[0].clientX - startTouchX;
-    if(Math.abs(moveX) > 35) {
-        player.lane = Math.max(0, Math.min(2, player.lane + (moveX > 0 ? 1 : -1)));
-        startTouchX = e.touches[0].clientX;
-    }
-});
+function move(dir){
 
-// --- Funções Auxiliares ---
-function spawnEnemy() {
-    let lane = Math.floor(Math.random() * 3);
-    if(enemies.some(en => en.lane === lane && en.y < 200)) return;
-    
-    let isTruck = Math.random() > 0.8;
-    enemies.push({
-        lane, x: lane * laneWidth + (laneWidth/2 - 27),
-        y: -200, w: 55, h: isTruck ? 170 : 95,
-        speed: speed * (isTruck ? 0.7 : 0.5),
-        color: isTruck ? '#95a5a6' : '#3498db'
-    });
+player.lane=Math.max(0,Math.min(2,player.lane+dir))
+
 }
 
-function drawCar(v, color) {
-    ctx.save();
-    // Sombra e Corpo
-    ctx.fillStyle = "rgba(0,0,0,0.2)";
-    ctx.fillRect(v.x+5, v.y+5, v.w, v.h);
-    ctx.fillStyle = color;
-    ctx.beginPath(); ctx.roundRect(v.x, v.y, v.w, v.h, 8); ctx.fill();
-    // Vidros
-    ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(v.x+8, v.y+15, v.w-16, 25);
-    // Luzes
-    ctx.fillStyle = color === player.color ? "#f1c40f" : "#c0392b";
-    ctx.fillRect(v.x+5, color === player.color ? v.y+v.h-5 : v.y, 12, 4);
-    ctx.fillRect(v.x+v.w-17, color === player.color ? v.y+v.h-5 : v.y, 12, 4);
-    ctx.restore();
+let startX=0
+
+document.addEventListener("touchstart",e=>{
+
+startX=e.touches[0].clientX
+
+})
+
+document.addEventListener("touchmove",e=>{
+
+if(!running)return
+
+let diff=e.touches[0].clientX-startX
+
+if(Math.abs(diff)>40){
+
+if(diff>0)move(1)
+else move(-1)
+
+startX=e.touches[0].clientX
+
 }
 
-// --- Compartilhamento ---
-function shareWhatsApp() {
-    const text = `Fiz ${Math.floor(score)} pontos no Highway Elite! Consegue bater meu recorde? 🚗💨 ${window.location.href}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`);
+})
+
+function drawCar(v,color){
+
+ctx.fillStyle=color
+
+ctx.fillRect(v.x,v.y,v.w,v.h)
+
 }
 
-function shareTwitter() {
-    const text = `Fiz ${Math.floor(score)} pontos no Highway Elite! 🚗💨 #GameDev #RetroHighway`;
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`);
+function drawGMSTruck(v){
+
+ctx.save()
+
+ctx.shadowBlur=15
+ctx.shadowColor="rgba(0,255,150,0.8)"
+
+ctx.fillStyle="#ecf0f1"
+
+ctx.fillRect(v.x,v.y,v.w,v.h)
+
+ctx.fillStyle="#bdc3c7"
+
+ctx.fillRect(v.x,v.y+v.h-60,v.w,60)
+
+let grad=ctx.createLinearGradient(v.x,v.y,v.x+v.w,v.y+v.h)
+
+grad.addColorStop(0,"#2ecc71")
+grad.addColorStop(1,"#3498db")
+
+ctx.fillStyle=grad
+
+ctx.beginPath()
+
+ctx.moveTo(v.x+v.w/2,v.y+40)
+
+ctx.quadraticCurveTo(v.x+v.w+10,v.y+80,v.x+v.w/2,v.y+120)
+
+ctx.quadraticCurveTo(v.x-10,v.y+80,v.x+v.w/2,v.y+40)
+
+ctx.fill()
+
+ctx.restore()
+
 }
 
-function gameOver() {
-    gameRunning = false;
-    gain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
-    
-    const record = localStorage.getItem("h_record") || 0;
-    if(score > record) {
-        localStorage.setItem("h_record", Math.floor(score));
-        document.getElementById("new-record").style.display = "block";
-    }
-    
-    document.getElementById("final-score").innerText = `PONTUAÇÃO: ${Math.floor(score)}`;
-    document.getElementById("game-over-menu").style.display = "flex";
+function spawnEnemy(){
+
+if(Math.random()<0.01){
+
+let lane=Math.floor(Math.random()*3)
+
+enemies.push({
+
+type:"gms",
+
+lane:lane,
+
+x:lane*laneWidth+40,
+
+y:-200,
+
+w:70,
+
+h:200,
+
+speed:5,
+
+bonus:false
+
+})
+
+return
+
 }
 
-// --- Loop Principal ---
-function loop() {
-    if(!gameRunning) return;
+let lane=Math.floor(Math.random()*3)
 
-    // Fundo e Estrada
-    ctx.fillStyle = "#333"; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = "#27ae60"; ctx.fillRect(0,0,15,canvas.height); ctx.fillRect(canvas.width-15,0,15,canvas.height);
-    
-    // Faixas
-    ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.setLineDash([30,30]); ctx.lineWidth = 4;
-    ctx.lineDashOffset = -(score * 2.5);
-    for(let i=1; i<3; i++) {
-        ctx.beginPath(); ctx.moveTo(i*laneWidth,0); ctx.lineTo(i*laneWidth,canvas.height); ctx.stroke();
-    }
+let r=Math.random()
 
-    // Jogador Suave
-    let tx = player.lane * laneWidth + (laneWidth/2 - 27);
-    player.x += (tx - player.x) * 0.18;
-    drawCar(player, player.color);
+let type="car"
 
-    // Inimigos
-    if(Math.random() < 0.02) spawnEnemy();
-    enemies.forEach((en, i) => {
-        en.y += en.speed + (speed * 0.3);
-        drawCar(en, en.color);
-        
-        if(player.x < en.x+en.w-8 && player.x+player.w-8 > en.x && player.y < en.y+en.h-8 && player.y+player.h-8 > en.y) {
-            gameOver();
-        }
-        if(en.y > canvas.height) { enemies.splice(i,1); score += 100; }
-    });
+let h=90
 
-    score += 1;
-    speed = 8 + (score / 2500);
-    osc.frequency.setTargetAtTime(50 + (speed * 4), audioCtx.currentTime, 0.1);
-    
-    document.getElementById("points").innerText = Math.floor(score);
-    document.getElementById("km").innerText = Math.floor(speed * 18) + " KM/H";
-    
-    requestAnimationFrame(loop);
+if(r>0.8){
+
+type="truck"
+
+h=180
+
 }
+
+else if(r>0.6){
+
+type="police"
+
+}
+
+enemies.push({
+
+type:type,
+
+lane:lane,
+
+x:lane*laneWidth+40,
+
+y:-150,
+
+w:55,
+
+h:h,
+
+speed:5
+
+})
+
+}
+
+function loop(){
+
+if(!running)return
+
+ctx.fillStyle=night?"#111":"#444"
+
+ctx.fillRect(0,0,canvas.width,canvas.height)
+
+ctx.strokeStyle="white"
+
+ctx.setLineDash([30,30])
+
+ctx.lineDashOffset=-(score*2)
+
+for(let i=1;i<3;i++){
+
+ctx.beginPath()
+
+ctx.moveTo(i*laneWidth,0)
+
+ctx.lineTo(i*laneWidth,canvas.height)
+
+ctx.stroke()
+
+}
+
+let targetX=player.lane*laneWidth+40
+
+player.x+= (targetX-player.x)*0.2
+
+drawCar(player,"red")
+
+if(Math.random()<0.02)spawnEnemy()
+
+enemies.forEach((e,i)=>{
+
+e.y+=e.speed+(speed*0.2)
+
+if(e.type==="car")drawCar(e,"blue")
+
+if(e.type==="truck")drawCar(e,"gray")
+
+if(e.type==="police")drawCar(e,"black")
+
+if(e.type==="gms"){
+
+drawGMSTruck(e)
+
+let dx=Math.abs(player.x-e.x)
+
+let dy=Math.abs(player.y-e.y)
+
+if(dx<90 && dy<120 && !e.bonus){
+
+coins+=50
+
+bonusMsg="BONUS GMS FLORESTAL +50"
+
+bonusTimer=120
+
+e.bonus=true
+
+}
+
+}
+
+if(
+
+player.x<e.x+e.w &&
+player.x+player.w>e.x &&
+player.y<e.y+e.h &&
+player.y+player.h>e.y &&
+e.type!=="gms"
+
+){
+
+running=false
+
+alert("FIM DA LINHA Score:"+Math.floor(score))
+
+location.reload()
+
+}
+
+if(e.y>canvas.height){
+
+enemies.splice(i,1)
+
+score+=100
+
+}
+
+})
+
+score+=1
+
+speed=8+(score/2000)
+
+document.getElementById("score").innerText=Math.floor(score)
+
+document.getElementById("speed").innerText=Math.floor(speed*15)+" KM/H"
+
+document.getElementById("coins").innerText="🪙 "+coins
+
+if(bonusTimer>0){
+
+ctx.fillStyle="yellow"
+
+ctx.font="bold 28px Arial"
+
+ctx.textAlign="center"
+
+ctx.fillText(bonusMsg,canvas.width/2,canvas.height/2)
+
+bonusTimer--
+
+}
+
+requestAnimationFrame(loop)
+
+}
+
 </script>
+
 </body>
 </html>
