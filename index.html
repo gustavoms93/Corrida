@@ -3,15 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Corrida Mobile</title>
+    <title>Retro Highway - v1.0</title>
     <style>
+        :root {
+            --bg-color: #2c3e50;
+            --road-color: #4a4a4a;
+            --line-color: #fff;
+            --shoulder-color: #f1c40f;
+            --control-bg: #1a252f;
+        }
+
         body { 
             margin: 0; 
             overflow: hidden; 
-            background: #2c3e50; 
-            font-family: sans-serif; 
-            user-select: none; /* Impede seleção de texto acidental */
-            touch-action: none; /* Melhora a resposta do toque */
+            background: var(--bg-color); 
+            font-family: 'Courier New', Courier, monospace; /* Fonte estilo retro */
+            user-select: none; 
+            touch-action: none; 
+            color: #fff;
         }
         
         #game-container {
@@ -24,57 +33,87 @@
         }
 
         canvas { 
-            background: #555; 
-            border-left: 5px dashed #fff; 
-            border-right: 5px dashed #fff;
-            /* O canvas ocupa a maior parte da altura, deixando espaço para os botões */
-            height: 80vh; 
+            background: var(--road-color); 
+            height: 75vh; /* Canvas um pouco menor para dar espaço ao rodapé */
             width: auto;
             max-width: 100%;
+            display: block;
         }
 
         #score { 
             position: absolute; 
             top: 10px; 
-            left: 10px; 
-            color: white; 
-            font-size: 20px; 
-            background: rgba(0,0,0,0.5); 
-            padding: 5px 10px; 
+            right: 10px; 
+            font-size: 22px; 
+            font-weight: bold;
+            background: rgba(0,0,0,0.7); 
+            padding: 5px 15px; 
             border-radius: 5px;
+            border: 2px solid var(--shoulder-color);
+            z-index: 10;
         }
 
-        /* Área dos Botões de Controle */
+        /* Área dos Botões de Controle e Rodapé */
+        #ui-container {
+            width: 100%;
+            height: 25vh; /* Área de controle e rodapé */
+            background: var(--control-bg);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            box-sizing: border-box;
+            border-top: 4px solid var(--shoulder-color);
+        }
+
         #controls {
             width: 100%;
-            height: 20vh; /* Ocupa os 20% restantes da altura */
-            background: #34495e;
             display: flex;
             justify-content: space-around;
             align-items: center;
-            padding: 0 20px;
-            box-sizing: border-box;
+            flex-grow: 1; /* Ocupa o espaço entre o canvas e o rodapé */
         }
 
         .btn-control {
-            width: 80px;
-            height: 80px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 4px solid #fff;
+            width: 90px;
+            height: 90px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 5px solid #fff;
             border-radius: 50%;
             color: white;
-            font-size: 40px;
+            font-size: 50px;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.3);
-            transition: background 0.1s;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.5);
+            transition: all 0.1s;
         }
 
         .btn-control:active {
-            background: rgba(255, 255, 255, 0.5);
-            transform: translateY(2px);
-            box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(3px);
+            box-shadow: 0 3px 0 rgba(0,0,0,0.5);
+        }
+
+        /* Estilização do Rodapé */
+        #footer {
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            color: #bdc3c7;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        #footer a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        #footer a:hover {
+            text-decoration: underline;
         }
 
     </style>
@@ -82,12 +121,21 @@
 <body>
 
     <div id="game-container">
-        <div id="score">Pontos: 0</div>
+        <div id="score">SCORE: 0</div>
         <canvas id="gameCanvas"></canvas>
 
-        <div id="controls">
-            <div class="btn-control" id="btn-left">←</div>
-            <div class="btn-control" id="btn-right">→</div>
+        <div id="ui-container">
+            <div id="controls">
+                <div class="btn-control" id="btn-left">←</div>
+                <div class="btn-control" id="btn-right">→</div>
+            </div>
+
+            <div id="footer">
+                Retro Highway v1.0 | Criado por: 
+                <a href="https://www.instagram.com/eng.florestalgustavoms?igsh=MTRqOHE0ZjcyOXdkMg==" target="_blank">
+                    eng.florestalgustavoms
+                </a>
+            </div>
         </div>
     </div>
 
@@ -100,125 +148,201 @@
         canvas.width = 400; // Largura lógica do jogo
         canvas.height = canvas.offsetHeight * (canvas.width / canvas.offsetWidth); // Altura lógica proporcional
 
+        // Configurações do Jogo e Dificuldade
+        let gameActive = true;
+        let score = 0;
+        let roadOffset = 0; // Para animação da estrada
+        let baseEnemySpeed = 4;
+        let spawnRate = 0.015; // Probabilidade de spawn por frame
+        let difficultyTimer = 0;
+
+        // Definindo as faixas (Lanes)
+        const totalLanes = 3;
+        const laneWidth = canvas.width / totalLanes;
+
         // Configurações do Carro do Jogador
         const player = {
-            x: canvas.width / 2 - 25,
-            y: canvas.height - 120, // Posicionado acima da área de controle
-            w: 50,
-            h: 80,
-            speed: 10, // Aumentei um pouco a velocidade para mobile
-            color: '#e74c3c'
+            lane: 1, // Começa na faixa central (0, 1, 2)
+            x: 0, // Definido no update
+            y: canvas.height - 130,
+            w: 60,
+            h: 100,
+            color: '#e74c3c' // Vermelho
         };
 
         let enemies = [];
-        let score = 0;
-        let gameActive = true;
         
         // Estado dos controles (teclado ou toque)
-        let moveLeft = false;
-        let moveRight = false;
+        let moveLeftPressed = false;
+        let moveRightPressed = false;
+        let canChangeLane = true; // Para movimento por toques únicos
 
         // --- CONTROLES DE TOQUE ---
         const btnLeft = document.getElementById('btn-left');
         const btnRight = document.getElementById('btn-right');
 
-        // Toque na Esquerda
-        btnLeft.addEventListener('touchstart', e => { e.preventDefault(); moveLeft = true; });
-        btnLeft.addEventListener('touchend', e => { e.preventDefault(); moveLeft = false; });
+        // Toque Único para mudar de faixa
+        btnLeft.addEventListener('touchstart', e => { e.preventDefault(); changeLane(-1); });
+        btnRight.addEventListener('touchstart', e => { e.preventDefault(); changeLane(1); });
         
-        // Toque na Direita
-        btnRight.addEventListener('touchstart', e => { e.preventDefault(); moveRight = true; });
-        btnRight.addEventListener('touchend', e => { e.preventDefault(); moveRight = false; });
-
         // --- CONTROLES DE TECLADO (Mantidos para PC) ---
         window.addEventListener('keydown', e => {
-            if (e.code === 'ArrowLeft' || e.code === 'KeyA') moveLeft = true;
-            if (e.code === 'ArrowRight' || e.code === 'KeyD') moveRight = true;
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') changeLane(-1);
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') changeLane(1);
         });
-        window.addEventListener('keyup', e => {
-            if (e.code === 'ArrowLeft' || e.code === 'KeyA') moveLeft = false;
-            if (e.code === 'ArrowRight' || e.code === 'KeyD') moveRight = false;
-        });
+
+        // Função para mudar de faixa logicamente
+        function changeLane(direction) {
+            if (!gameActive) return;
+            player.lane += direction;
+            if (player.lane < 0) player.lane = 0;
+            if (player.lane >= totalLanes) player.lane = totalLanes - 1;
+        }
 
         // --- LÓGICA DO JOGO ---
 
         function spawnEnemy() {
-            const x = Math.random() * (canvas.width - 50);
-            enemies.push({ x, y: -100, w: 50, h: 80, speed: 6 + (score / 1000) });
+            const lane = Math.floor(Math.random() * totalLanes);
+            const w = 60;
+            const h = 100;
+            const x = (lane * laneWidth) + (laneWidth / 2) - (w / 2);
+            
+            // Cores aleatórias para inimigos
+            const colors = ['#2ecc71', '#3498db', '#f39c12'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+
+            enemies.push({ x, y: -150, w, h, speed: baseEnemySpeed + (Math.random() * 2), color });
         }
 
-        function drawRect(obj, color) {
-            ctx.fillStyle = color;
-            ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-            // Janela do carro
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
-            ctx.fillRect(obj.x + 10, obj.y + 10, obj.w - 20, 20);
-            // Faróis
+        // Função para desenhar um carro estilizado
+        function drawCar(car) {
+            // Corpo principal
+            ctx.fillStyle = car.color;
+            ctx.fillRect(car.x, car.y, car.w, car.h);
+
+            // Teto/Janela
+            ctx.fillStyle = '#333'; // Cor escura para janelas
+            ctx.fillRect(car.x + 10, car.y + 15, car.w - 20, 30);
+            
+            // Para-brisa (reflexo)
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.fillRect(car.x + 15, car.y + 20, car.w - 30, 10);
+
+            // Faróis Dianteiros (amarelos)
             ctx.fillStyle = '#f1c40f';
-            ctx.fillRect(obj.x + 5, obj.y + obj.h - 10, 10, 5);
-            ctx.fillRect(obj.x + obj.w - 15, obj.y + obj.h - 10, 10, 5);
+            ctx.fillRect(car.x + 8, car.y + car.h - 10, 12, 6); // Esquerdo
+            ctx.fillRect(car.x + car.w - 20, car.y + car.h - 10, 12, 6); // Direito
+
+            // Lanternas Traseiras (vermelhas, só aparecem se o carro estiver descendo)
+            if (car.color !== player.color) {
+                ctx.fillStyle = '#c0392b';
+                ctx.fillRect(car.x + 8, car.y + 5, 12, 4); // Esq
+                ctx.fillRect(car.x + car.w - 20, car.y + 5, 12, 4); // Dir
+            } else {
+                // Detalhe extra no carro do jogador (faixas esportivas)
+                ctx.fillStyle = 'white';
+                ctx.fillRect(car.x + car.w/2 - 2, car.y, 4, car.h);
+            }
         }
 
         function update() {
             if (!gameActive) return;
 
-            // Movimento do Jogador (Teclado ou Toque)
-            if (moveLeft && player.x > 0) player.x -= player.speed;
-            if (moveRight && player.x < canvas.width - player.w) player.x += player.speed;
+            difficultyTimer++;
 
-            // Gerar inimigos
-            if (Math.random() < 0.02) spawnEnemy();
+            // Aumentar dificuldade progressivamente
+            if (difficultyTimer % 500 === 0) { // A cada ~8 segundos
+                baseEnemySpeed += 0.5;
+                spawnRate += 0.002;
+                if (spawnRate > 0.05) spawnRate = 0.05; // Cap no spawn rate
+            }
+
+            // Atualizar posição X do jogador baseado na faixa
+            const targetX = (player.lane * laneWidth) + (laneWidth / 2) - (player.w / 2);
+            // Suavizar o movimento lateral (interpolação simples)
+            player.x += (targetX - player.x) * 0.2;
+
+            // Velocidade da animação da estrada baseada na velocidade dos inimigos
+            roadOffset += (baseEnemySpeed + 2); 
+            if (roadOffset > 60) roadOffset = 0;
+
+            // Gerar inimigos baseado na taxa atual
+            if (Math.random() < spawnRate) spawnEnemy();
 
             enemies.forEach((enemy, index) => {
                 enemy.y += enemy.speed;
 
-                // Colisão
-                if (player.x < enemy.x + enemy.w &&
-                    player.x + player.w > enemy.x &&
-                    player.y < enemy.y + enemy.h &&
-                    player.y + player.h > enemy.y) {
+                // Detecção de Colisão Aprimorada (Hitbox ligeiramente menor)
+                if (player.x + 5 < enemy.x + enemy.w - 5 &&
+                    player.x + player.w - 5 > enemy.x + 5 &&
+                    player.y + 10 < enemy.y + enemy.h - 10 &&
+                    player.y + player.h - 10 > enemy.y + 10) {
                     gameActive = false;
-                    alert("Game Over! Pontuação: " + Math.floor(score));
-                    location.reload(); 
+                    
+                    // Desenhar colisão na tela antes do alert
+                    ctx.fillStyle = 'white';
+                    ctx.font = '40px Courier New';
+                    ctx.textAlign = 'center';
+                    ctx.fillText("CRASH!", canvas.width/2, canvas.height/2);
+
+                    setTimeout(() => {
+                        alert("GAME OVER!\nPontuação Final: " + Math.floor(score));
+                        location.reload(); 
+                    }, 10);
                 }
 
-                // Remover inimigos
+                // Remover inimigos e pontuar
                 if (enemy.y > canvas.height) {
                     enemies.splice(index, 1);
-                    score += 50; // Mais pontos por carro desviado
+                    score += 100; // Pontos por carro desviado
                 }
             });
 
-            score += 0.2; // Pontuação por tempo
-            scoreElement.innerText = "Pontos: " + Math.floor(score);
+            score += 1; // Pontuação por tempo
+            scoreElement.innerText = "SCORE: " + Math.floor(score);
+        }
+
+        function drawRoad() {
+            // Faixas Laterais (Ombro da estrada)
+            ctx.fillStyle = '#27ae60'; // Grama lateral
+            ctx.fillRect(0, 0, 15, canvas.height);
+            ctx.fillRect(canvas.width - 15, 0, 15, canvas.height);
+
+            ctx.fillStyle = '#f1c40f'; // Linha amarela contínua
+            ctx.fillRect(15, 0, 5, canvas.height);
+            ctx.fillRect(canvas.width - 20, 0, 5, canvas.height);
+
+            // Linhas Centrais Animadas (Tracejadas)
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 4;
+            ctx.setLineDash([30, 30]); // Tamanho da linha, tamanho do espaço
+            ctx.lineDashOffset = -roadOffset; // Animação
+            
+            // Desenhar linhas entre as faixas
+            for (let i = 1; i < totalLanes; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * laneWidth, 0);
+                ctx.lineTo(i * laneWidth, canvas.height);
+                ctx.stroke();
+            }
         }
 
         function draw() {
             // Limpar tela com cor da estrada
-            ctx.fillStyle = "#555";
+            ctx.fillStyle = "#4a4a4a";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Desenhar Faixas da Estrada
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 6;
-            ctx.setLineDash([30, 30]);
-            ctx.beginPath();
-            ctx.moveTo(canvas.width / 2, 0);
-            ctx.lineTo(canvas.width / 2, canvas.height);
-            ctx.stroke();
+            drawRoad();
 
-            // Desenhar Jogador e Inimigos
-            drawRect(player, player.color);
-            enemies.forEach(enemy => drawRect(enemy, '#2ecc71'));
+            // Desenhar Jogador e Inimigos usando a nova função de desenho de carro
+            enemies.forEach(enemy => drawCar(enemy));
+            drawCar(player);
 
             update();
             requestAnimationFrame(draw);
         }
 
         // Iniciar
-        spawnEnemy();
-        draw();
-    </script>
-</body>
-</html>
+        player.x = (player.lane * laneWidth) + (laneWidth / 2) - (player.w / 2); // Posição X inicial
+        draw
 
