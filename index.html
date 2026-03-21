@@ -3,48 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GMS Highway v9.3 - Anti-Paredão</title>
+    <title>Asphalt Escape v10.0 - GMS Elite</title>
     <style>
-        :root { --gold: #f1c40f; --gas: #2ecc71; --danger: #e74c3c; }
+        :root { --gms-green: #1b5e20; --gold: #f1c40f; --danger: #e74c3c; --road: #222; }
         body { margin: 0; background: #000; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; color: white; touch-action: none; user-select: none; }
-        canvas { display: block; margin: auto; background: #222; }
+        canvas { display: block; margin: auto; background: var(--road); }
         
-        .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.92); z-index: 100; text-align: center; }
-        .btn-play { padding: 18px 45px; font-size: 22px; font-weight: bold; border: none; border-radius: 50px; background: var(--gold); color: #000; cursor: pointer; box-shadow: 0 5px 0 #b7950b; text-transform: uppercase; }
+        /* Telas de Overlay */
+        .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); z-index: 100; text-align: center; padding: 20px; }
+        .btn-main { padding: 18px 40px; font-size: 22px; font-weight: bold; border: none; border-radius: 50px; background: var(--gold); color: #000; cursor: pointer; box-shadow: 0 5px 0 #b7950b; text-transform: uppercase; margin: 10px; }
         
-        .btn-whatsapp { background: #25d366; color: white; padding: 12px 25px; border-radius: 30px; text-decoration: none; font-weight: bold; margin: 15px 0; display: inline-flex; align-items: center; gap: 8px; }
-        
-        #ui { position: absolute; top: 15px; left: 15px; right: 15px; display: none; justify-content: space-between; z-index: 10; pointer-events: none; text-shadow: 2px 2px #000; }
-        .fuel-bar { width: 120px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; overflow: hidden; border: 1px solid #fff; }
-        #fuel-fill { height: 100%; background: var(--gas); width: 100%; }
+        /* Botões Sociais */
+        .social-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+        .btn-social { padding: 10px; border-radius: 10px; border: none; font-weight: bold; color: white; text-decoration: none; font-size: 14px; cursor: pointer; }
+        .wa { background: #25d366; } .tw { background: #1da1f2; } .fb { background: #4267B2; } .copy { background: #666; }
 
-        .controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; }
-        .ctrl-btn { width: 75px; height: 75px; background: rgba(255,255,255,0.15); border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; }
+        /* UI de Jogo */
+        #ui { position: absolute; top: 15px; left: 15px; right: 15px; display: none; justify-content: space-between; z-index: 10; pointer-events: none; }
+        .fuel-bar { width: 120px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; overflow: hidden; border: 1px solid #fff; }
+        #fuel-fill { height: 100%; background: #2ecc71; width: 100%; }
+        
+        /* Controles */
+        .controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: space-between; padding: 0 25px; box-sizing: border-box; }
+        .ctrl-btn { width: 70px; height: 70px; background: rgba(255,255,255,0.1); border: 2px solid #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; opacity: 0.6; }
+
+        /* Estilos de Texto */
+        .gms-msg { position: absolute; top: 20%; width: 100%; text-align: center; font-weight: bold; color: var(--gold); font-size: 24px; animation: pop 1s; display: none; z-index: 100; }
+        @keyframes pop { 0% { transform: scale(0); } 100% { transform: scale(1.2); } }
+        .credits { font-size: 12px; margin-top: 15px; opacity: 0.8; line-height: 1.5; }
+        .ranking-list { font-size: 14px; color: var(--gold); margin: 10px 0; list-style: none; padding: 0; }
     </style>
 </head>
 <body>
 
+<div id="msg-box" class="gms-msg">EASTER EGG ENCONTRADO!</div>
+
 <div id="menu-main" class="overlay">
-    <h1 style="color: var(--gold); font-size: 40px; margin: 0;">GMS HIGHWAY</h1>
-    <p style="color: var(--gas); margin-bottom: 25px;">DIRIJA RÁPIDO. SOBREVIVA.</p>
-    <button class="btn-play" onclick="initGame()">CORRER AGORA</button>
+    <h1 style="color: var(--gold); font-size: 45px; margin: 0;">ASPHALT ESCAPE</h1>
+    <p style="color: var(--gms-green); font-weight: bold; margin-bottom: 5px;">"Dirija rápido. Desvie. Sobreviva."</p>
+    
+    <div id="ranking-container">
+        <p style="margin: 5px 0; font-size: 12px;">TOP 5 RECORDES:</p>
+        <ul id="ranking-list" class="ranking-list"></ul>
+    </div>
+
+    <button class="btn-main" onclick="initGame()">CORRER AGORA</button>
+    
+    <div class="credits">
+        Asphalt Escape é criado por <b>Gustavo Moreira</b>,<br>
+        Engenheiro Florestal e fundador da GMS Florestal.<br>
+        <a href="https://www.instagram.com/eng.florestalgustavoms" target="_blank" style="color: var(--gold); text-decoration: none;">@eng.florestalgustavoms</a>
+    </div>
+    <div style="position: absolute; bottom: 10px; opacity: 0.4; font-size: 10px;">v10.0</div>
 </div>
 
 <div id="menu-over" class="overlay" style="display: none;">
-    <h1 style="color: var(--danger);">BATIDA DETECTADA!</h1>
-    <h2 style="font-size: 40px; margin: 10px 0;">SCORE: <span id="final-score">0</span></h2>
-    <a id="share-wa" class="btn-whatsapp" target="_blank">Compartilhar no WhatsApp</a>
-    <button class="btn-play" onclick="initGame()">TENTAR NOVAMENTE</button>
+    <h1 id="medal-txt" style="margin: 0;">🥈 PRATA</h1>
+    <h2 style="font-size: 48px; margin: 10px 0;"><span id="final-score">0</span></h2>
+    
+    <button class="btn-main" onclick="shareChallenge()" style="background: var(--gms-green); color: white; box-shadow: 0 5px 0 #0d3d14;">DESAFIAR AMIGOS</button>
+    
+    <div class="social-grid">
+        <button class="btn-social wa" onclick="share('wa')">WhatsApp</button>
+        <button class="btn-social tw" onclick="share('tw')">Twitter/X</button>
+        <button class="btn-social fb" onclick="share('fb')">Facebook</button>
+        <button class="btn-social copy" onclick="copyLink()">Copiar Link</button>
+    </div>
+
+    <button class="btn-main" onclick="initGame()">TENTAR NOVAMENTE</button>
 </div>
 
 <div id="ui">
     <div>
-        <div id="km-txt">0 KM/H</div>
+        <div id="km-txt" style="font-weight: bold;">0 KM/H</div>
         <div class="fuel-bar"><div id="fuel-fill"></div></div>
     </div>
     <div style="text-align: right;">
-        <div style="color: var(--gold); font-size: 20px;">🪙 <span id="coin-txt">0</span></div>
-        <div id="score-txt" style="font-weight: bold;">0</div>
+        <div style="color: var(--gold); font-size: 22px;">🪙 <span id="coin-txt">0</span></div>
+        <div id="score-txt" style="font-weight: bold; font-size: 18px;">0</div>
     </div>
 </div>
 
@@ -59,30 +95,50 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-let gameActive = false, score, speed, fuel, enemies, raf;
+// Variáveis de Estado
+let gameActive = false, score = 0, speed = 7, fuel = 100, coins = 0;
+let enemies = [], items = [], scenery = [], particles = [], raf;
 let player = { lane: 1, x: 0, y: 0, w: 50, h: 85, targetX: 0 };
 
 function resize() {
     canvas.width = Math.min(window.innerWidth, 450);
     canvas.height = window.innerHeight;
-    player.y = canvas.height - 160;
+    player.y = canvas.height - 180;
     updateTargetX();
 }
 window.addEventListener('resize', resize);
 resize();
 
-function updateTargetX() {
-    player.targetX = (player.lane * (canvas.width / 3)) + (canvas.width / 6) - (player.w / 2);
+// --- SISTEMA DE RANKING ---
+function updateRanking(newScore) {
+    let ranks = JSON.parse(localStorage.getItem('gms_ranks') || "[]");
+    ranks.push(Math.floor(newScore));
+    ranks.sort((a,b) => b-a);
+    ranks = ranks.slice(0, 5);
+    localStorage.setItem('gms_ranks', JSON.stringify(ranks));
+    loadRanking();
 }
 
-function movePlayer(dir) {
-    if(!gameActive) return;
-    player.lane = Math.max(0, Math.min(2, player.lane + dir));
-    updateTargetX();
+function loadRanking() {
+    const ranks = JSON.parse(localStorage.getItem('gms_ranks') || "[]");
+    const list = document.getElementById("ranking-list");
+    list.innerHTML = ranks.map((s, i) => `<li>${i+1}º - ${s} pts</li>`).join("");
+}
+loadRanking();
+
+// --- CONTROLES ---
+function updateTargetX() { player.targetX = (player.lane * (canvas.width / 3)) + (canvas.width / 6) - (player.w / 2); }
+function movePlayer(dir) { if(!gameActive) return; player.lane = Math.max(0, Math.min(2, player.lane + dir)); updateTargetX(); }
+
+// --- ELEMENTOS DO CERRADO ---
+function spawnScenery() {
+    if(Math.random() < 0.1) {
+        scenery.push({ x: Math.random() < 0.5 ? 5 : canvas.width - 25, y: -50, type: Math.random() > 0.5 ? '🌵' : '🌳' });
+    }
 }
 
 function initGame() {
-    score = 0; speed = 7; fuel = 100; enemies = [];
+    score = 0; speed = 7; fuel = 100; coins = 0; enemies = []; items = []; scenery = []; particles = [];
     player.lane = 1; updateTargetX(); player.x = player.targetX;
     document.getElementById("menu-main").style.display = "none";
     document.getElementById("menu-over").style.display = "none";
@@ -93,52 +149,108 @@ function initGame() {
 }
 
 function drawVehicle(v) {
+    // Sombra
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.fillRect(v.x + 5, v.y + 5, v.w, v.h);
+    
+    // Corpo
     ctx.fillStyle = v.color || "#444";
     ctx.beginPath(); ctx.roundRect(v.x, v.y, v.w, v.h, 8); ctx.fill();
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(v.x+8, v.y+10, v.w-16, 20);
     
-    if(v.type === 'truck') {
-        ctx.fillStyle = "white"; ctx.font = "bold 10px Arial";
-        ctx.save(); ctx.translate(v.x+v.w-5, v.y+v.h-10); ctx.rotate(-Math.PI/2);
+    // Detalhes GMS
+    if(v.isEasterEgg) {
+        ctx.fillStyle = "white"; ctx.font = "bold 12px Arial";
+        ctx.save(); ctx.translate(v.x+v.w-5, v.y+v.h-15); ctx.rotate(-Math.PI/2);
         ctx.fillText("GMS FLORESTAL", 0, 0); ctx.restore();
+    }
+    
+    // Vidro
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(v.x+8, v.y+10, v.w-16, 22);
+}
+
+function explode() {
+    for(let i=0; i<20; i++) {
+        particles.push({
+            x: player.x + 25, y: player.y + 40,
+            vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10,
+            size: Math.random()*8, color: Math.random() > 0.5 ? "#f1c40f" : "#e74c3c"
+        });
     }
 }
 
 function update() {
-    if(!gameActive) return;
+    if(!gameActive && particles.length === 0) return;
+
+    // Fundo Estrada
     ctx.fillStyle = "#222"; ctx.fillRect(0,0,canvas.width, canvas.height);
     
+    // Cenário Lateral (Cerrado)
+    scenery.forEach((s, i) => {
+        s.y += speed;
+        ctx.font = "20px Arial";
+        ctx.fillText(s.type, s.x, s.y);
+        if(s.y > canvas.height) scenery.splice(i, 1);
+    });
+    spawnScenery();
+
     // Faixas
-    ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.setLineDash([40, 40]);
+    ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.setLineDash([40, 60]);
     ctx.lineDashOffset = -(score * 10);
     for(let i=1; i<3; i++) {
         ctx.beginPath(); ctx.moveTo(i*(canvas.width/3), 0); ctx.lineTo(i*(canvas.width/3), canvas.height); ctx.stroke();
     }
 
+    // Linhas de Velocidade (>120km/h)
+    if(speed > 12) {
+        ctx.strokeStyle = "rgba(255,255,255,0.1)"; ctx.setLineDash([]);
+        for(let i=0; i<5; i++) {
+            let rx = Math.random()*canvas.width;
+            ctx.beginPath(); ctx.moveTo(rx, 0); ctx.lineTo(rx, canvas.height); ctx.stroke();
+        }
+    }
+
+    // Movimento Player
     player.x += (player.targetX - player.x) * 0.2;
     drawVehicle({...player, color: "#e74c3c"});
 
-    // --- LÓGICA DE SPAWN MELHORADA ---
-    if(Math.random() < 0.02) {
+    // Itens (Moedas e Combustível)
+    if(Math.random() < 0.03) {
         let lane = Math.floor(Math.random()*3);
+        items.push({
+            type: Math.random() > 0.8 ? 'gas' : 'coin',
+            x: (lane * (canvas.width/3)) + (canvas.width/6),
+            y: -50, lane
+        });
+    }
+    
+    items.forEach((it, i) => {
+        it.y += speed;
+        ctx.font = "20px Arial";
+        ctx.fillText(it.type === 'coin' ? '🪙' : '⛽', it.x-10, it.y);
         
-        // 1. Evita sobreposição na mesma faixa (Distância de 250px)
-        let tooCloseInLane = enemies.some(e => e.lane === lane && e.y < 250);
-        
-        // 2. Evita Paredão (Não deixa 3 carros na mesma altura)
-        let enemiesInTopArea = enemies.filter(e => e.y < 100);
-        let wouldCreateWall = enemiesInTopArea.length >= 2;
+        // Coleta
+        if(Math.hypot(player.x+25 - it.x, player.y+40 - it.y) < 40) {
+            if(it.type === 'coin') score += 100;
+            else fuel = Math.min(100, fuel + 30);
+            items.splice(i, 1);
+        }
+    });
 
-        if(!tooCloseInLane && !wouldCreateWall) {
-            let isTruck = Math.random() > 0.8;
+    // Inimigos e Dificuldade
+    let spawnRate = 0.02 + (score/100000);
+    if(Math.random() < spawnRate) {
+        let lane = Math.floor(Math.random()*3);
+        if(!enemies.some(e => e.lane === lane && e.y < 300)) {
+            let isEasterEgg = Math.random() < 0.02; // 2% de chance
+            let isLarge = score > 5000 && Math.random() > 0.8;
+            
             enemies.push({
-                lane: lane,
-                x: (lane * (canvas.width/3)) + (canvas.width/6) - 25,
-                y: -200, w: 50, h: isTruck ? 150 : 85,
-                color: isTruck ? "#1b5e20" : "#2980b9",
-                type: isTruck ? 'truck' : 'car',
-                speed: 2 + Math.random()*2
+                lane, x: (lane * (canvas.width/3)) + (canvas.width/6) - (isLarge ? 40 : 25),
+                y: -200, w: isLarge ? 80 : 50, h: isEasterEgg || isLarge ? 160 : 85,
+                color: isEasterEgg ? var(--gms-green) : "#2980b9",
+                type: (isEasterEgg || isLarge) ? 'truck' : 'car',
+                isEasterEgg, speed: 2 + Math.random()*2
             });
         }
     }
@@ -147,31 +259,87 @@ function update() {
         e.y += e.speed + (speed * 0.4);
         drawVehicle(e);
         
-        // Hitbox aprimorada (v.w-10 para ser mais generoso nas laterais)
-        if(player.x + 5 < e.x + e.w - 5 && 
-           player.x + player.w - 5 > e.x + 5 && 
-           player.y + 5 < e.y + e.h - 5 && 
-           player.y + player.h - 5 > e.y + 5) {
+        // Colisão
+        if(player.x+5 < e.x+e.w-5 && player.x+player.w-5 > e.x+5 && player.y+5 < e.y+e.h-5 && player.y+player.h-5 > e.y+5) {
             gameOver();
         }
+        
+        // Ultrapassar Easter Egg
+        if(e.isEasterEgg && e.y > player.y && !e.done) {
+            score += 5000; e.done = true;
+            showGMSMessage("EASTER EGG ENCONTRADO!");
+        }
+
         if(e.y > canvas.height) enemies.splice(i, 1);
     });
 
-    score += 0.5; fuel -= 0.035;
-    document.getElementById("fuel-fill").style.width = fuel + "%";
-    document.getElementById("score-txt").innerText = Math.floor(score);
-    document.getElementById("km-txt").innerText = Math.floor(speed * 15 + (score/20)) + " KM/H";
+    // Partículas de explosão
+    particles.forEach((p, i) => {
+        p.x += p.vx; p.y += p.vy; p.size *= 0.95;
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+        if(p.size < 0.5) particles.splice(i, 1);
+    });
 
-    if(fuel <= 0) gameOver();
+    if(gameActive) {
+        score += 1; fuel -= 0.04;
+        speed = 7 + (score/5000);
+        
+        if(score > 10000 && !window.roadSecret) {
+            showGMSMessage("RODOVIA SECRETA GMS LIBERADA!");
+            window.roadSecret = true;
+        }
+
+        document.getElementById("fuel-fill").style.width = fuel + "%";
+        document.getElementById("score-txt").innerText = Math.floor(score);
+        document.getElementById("km-txt").innerText = Math.floor(speed * 15) + " KM/H";
+        if(fuel <= 0) gameOver();
+    }
     raf = requestAnimationFrame(update);
+}
+
+function showGMSMessage(txt) {
+    const b = document.getElementById("msg-box");
+    b.innerText = txt; b.style.display = "block";
+    setTimeout(() => b.style.display = "none", 3000);
 }
 
 function gameOver() {
     gameActive = false;
-    document.getElementById("menu-over").style.display = "flex";
-    document.getElementById("final-score").innerText = Math.floor(score);
-    const msg = `Fiz ${Math.floor(score)} pontos no GMS Highway! 🚗🔥\nConsegue bater meu recorde?\n\nJogue aqui: ${window.location.href}`;
-    document.getElementById("share-wa").href = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+    explode();
+    updateRanking(score);
+    
+    setTimeout(() => {
+        document.getElementById("menu-over").style.display = "flex";
+        document.getElementById("final-score").innerText = Math.floor(score);
+        
+        // Medalhas
+        let m = "🥉 BRONZE";
+        if(score >= 10000) m = "👑 LENDA";
+        else if(score >= 6000) m = "🥇 OURO";
+        else if(score >= 3000) m = "🥈 PRATA";
+        document.getElementById("medal-txt").innerText = m;
+    }, 1000);
+}
+
+// --- SISTEMA SOCIAL ---
+function getMsg() { return encodeURIComponent(`Fiz ${Math.floor(score)} pontos no Asphalt Escape! 🚗🔥\nConsegue bater meu recorde?\n\nJogue aqui: ${window.location.href}\nCriado por @eng.florestalgustavoms`); }
+
+function share(p) {
+    const url = window.location.href;
+    if(p==='wa') window.open(`https://api.whatsapp.com/send?text=${getMsg()}`);
+    if(p==='tw') window.open(`https://twitter.com/intent/tweet?text=${getMsg()}`);
+    if(p==='fb') window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`);
+}
+
+function shareChallenge() {
+    const msg = encodeURIComponent(`Desafio você a bater minha pontuação no Asphalt Escape!\n\nMinha pontuação foi: ${Math.floor(score)}\n\nJogue aqui: ${window.location.href}`);
+    window.open(`https://api.whatsapp.com/send?text=${msg}`);
+}
+
+function copyLink() {
+    navigator.clipboard.writeText(window.location.href);
+    alert("Link copiado para a área de transferência!");
 }
 </script>
 </body>
