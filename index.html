@@ -3,64 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Retro Highway v6.5 - GMS Elite</title>
+    <title>Retro Highway v7.5 - GMS Elite</title>
     <style>
-        :root { --gold: #f1c40f; --gas: #2ecc71; --danger: #e74c3c; }
-        body { margin: 0; background: #111; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; color: white; touch-action: none; }
-        canvas { display: block; margin: auto; background: #222; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        :root { --gold: #f1c40f; --gas: #2ecc71; --danger: #e74c3c; --gms-green: #1b5e20; }
+        body { margin: 0; background: #111; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; color: white; touch-action: none; user-select: none; }
+        canvas { display: block; margin: auto; background: #3d3d3d; }
         
         .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); z-index: 100; text-align: center; padding: 20px; }
-        
-        /* Botões Estilizados */
-        .btn-main { padding: 18px 45px; font-size: 22px; font-weight: bold; border: none; border-radius: 50px; background: var(--gold); color: #000; cursor: pointer; transition: 0.2s; margin: 10px; text-transform: uppercase; }
+        .btn-main { padding: 18px 45px; font-size: 22px; font-weight: bold; border: none; border-radius: 50px; background: var(--gold); color: #000; cursor: pointer; margin: 10px; text-transform: uppercase; box-shadow: 0 4px 0 #b7950b; }
         .btn-share { padding: 12px 25px; border-radius: 25px; border: none; font-weight: bold; color: white; margin: 5px; cursor: pointer; min-width: 120px; }
         .whatsapp { background: #25d366; }
-        .twitter { background: #1da1f2; }
-
-        #ui { position: absolute; top: 15px; left: 15px; pointer-events: none; z-index: 10; width: calc(100% - 30px); display: flex; justify-content: space-between; text-shadow: 2px 2px #000; font-weight: bold; }
-        #fuel-wrap { width: 120px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; overflow: hidden; margin-top: 5px; }
-        #fuel-fill { height: 100%; background: var(--gas); width: 100%; transition: width 0.3s; }
         
-        .new-record { color: var(--gold); font-weight: bold; animation: blink 0.5s infinite; margin: 10px 0; }
-        @keyframes blink { 50% { opacity: 0; } }
+        #ui { position: absolute; top: 15px; left: 15px; pointer-events: none; z-index: 10; width: calc(100% - 30px); display: flex; justify-content: space-between; text-shadow: 2px 2px #000; }
+        #fuel-wrap { width: 120px; height: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; overflow: hidden; margin-top: 5px; border: 1px solid rgba(255,255,255,0.3); }
+        #fuel-fill { height: 100%; background: var(--gas); width: 100%; }
     </style>
 </head>
 <body>
 
 <div id="game-container">
     <div id="menu-main" class="overlay">
-        <h1 style="font-size: 42px; color: var(--gold); margin: 0;">HIGHWAY v6.5</h1>
-        <p>RECORDE ATUAL: <span id="record-display">0</span></p>
+        <h1 style="font-size: 42px; color: var(--gold); margin: 0;">GMS HIGHWAY 7.5</h1>
+        <p>RECORDE: <span id="record-display">0</span></p>
         <button class="btn-main" onclick="initGame()">CORRER AGORA</button>
-        <p style="font-size: 14px; opacity: 0.7;">@eng.florestalgustavoms</p>
+        <p style="font-size: 14px; opacity: 0.7;">Arraste para os lados para desviar!</p>
     </div>
 
     <div id="menu-over" class="overlay" style="display: none;">
         <h1 style="color: var(--danger); font-size: 32px;">BATIDA DETECTADA!</h1>
-        <h2 style="margin: 5px 0;">PONTUAÇÃO: <span id="final-score">0</span></h2>
-        <div id="new-record-msg" class="new-record" style="display: none;">NOVO RECORDE!</div>
-        
-        <p style="margin-top: 30px; font-size: 14px; letter-spacing: 1px;">COMPARTILHAR PONTUAÇÃO:</p>
-        <div style="display: flex;">
-            <button class="btn-share whatsapp" onclick="share('wa')">WhatsApp</button>
-            <button class="btn-share twitter" onclick="share('tw')">Twitter/X</button>
-        </div>
-        
-        <button class="btn-main" style="margin-top: 40px;" onclick="initGame()">TENTAR NOVAMENTE</button>
+        <h2 style="margin: 5px 0;">SCORE: <span id="final-score">0</span></h2>
+        <button class="btn-share whatsapp" onclick="share()">WhatsApp</button>
+        <button class="btn-main" style="margin-top: 20px;" onclick="initGame()">TENTAR NOVAMENTE</button>
     </div>
 
     <div id="ui" style="display: none;">
         <div>
             <div id="km-txt">0 KM/H</div>
             <div id="fuel-wrap"><div id="fuel-fill"></div></div>
-            <small style="font-size: 10px; letter-spacing: 1px;">GASOLINA</small>
         </div>
         <div style="text-align: right;">
             <div style="font-size: 20px; color: var(--gold);">🪙 <span id="coin-txt">0</span></div>
-            <div id="score-txt">SCORE: 0</div>
+            <div id="score-txt">0</div>
         </div>
     </div>
-
     <canvas id="gameCanvas"></canvas>
 </div>
 
@@ -68,11 +53,8 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// Estados e Variáveis
-let gameActive = false;
-let score, speed, coins, fuel, enemies, items, rafId;
+let gameActive = false, score, speed, coins, fuel, enemies, items, rafId;
 let player = { lane: 1, x: 0, y: 0, w: 50, h: 85 };
-const laneWidth = 140; // Base para cálculo dinâmico
 
 function resize() {
     canvas.width = Math.min(window.innerWidth, 450);
@@ -82,16 +64,54 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-function resetGameState() {
-    cancelAnimationFrame(rafId);
-    score = 0; speed = 8; coins = 0; fuel = 100;
-    enemies = []; items = [];
-    player.lane = 1;
-    player.x = (canvas.width / 3) * 1.5 - 25;
+// --- CONTROLE POR DESLIZE (SWIPE) ---
+let touchStartX = 0;
+document.addEventListener("touchstart", e => touchStartX = e.touches[0].clientX);
+document.addEventListener("touchmove", e => {
+    if (!gameActive) return;
+    let touchX = e.touches[0].clientX;
+    let diff = touchX - touchStartX;
+
+    if (Math.abs(diff) > 40) { // Sensibilidade do deslize
+        if (diff > 0 && player.lane < 2) player.lane++;
+        else if (diff < 0 && player.lane > 0) player.lane--;
+        touchStartX = touchX; // Reseta para permitir múltiplos deslizes
+    }
+}, {passive: false});
+
+function drawVehicle(v) {
+    ctx.save();
+    ctx.fillStyle = v.color || "#444";
+    ctx.beginPath();
+    ctx.roundRect(v.x, v.y, v.w, v.h, 8);
+    ctx.fill();
+
+    // Vidros
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fillRect(v.x + 5, v.y + 10, v.w - 10, 20);
+
+    // Texto GMS FLORESTAL no Caminhão
+    if (v.type === 'truck') {
+        ctx.save();
+        ctx.translate(v.x + v.w - 5, v.y + v.h - 10);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = "white";
+        ctx.font = "bold 11px Arial";
+        ctx.fillText("GMS FLORESTAL", 5, 0);
+        ctx.restore();
+        
+        // Detalhe da Carga
+        ctx.strokeStyle = "rgba(0,0,0,0.2)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(v.x+5, v.y+40, v.w-10, v.h-50);
+    }
+    ctx.restore();
 }
 
 function initGame() {
-    resetGameState();
+    cancelAnimationFrame(rafId);
+    score = 0; speed = 8; coins = 0; fuel = 100; enemies = []; items = [];
+    player.lane = 1;
     document.getElementById("menu-main").style.display = "none";
     document.getElementById("menu-over").style.display = "none";
     document.getElementById("ui").style.display = "flex";
@@ -99,125 +119,61 @@ function initGame() {
     update();
 }
 
-// Controles Suaves
-document.addEventListener("touchstart", e => {
-    const touchX = e.touches[0].clientX;
-    const third = window.innerWidth / 3;
-    if (touchX < third) player.lane = 0;
-    else if (touchX < third * 2) player.lane = 1;
-    else player.lane = 2;
-});
-
-function drawCar(v, color, isPlayer = false) {
-    ctx.fillStyle = "rgba(0,0,0,0.3)"; // Sombra
-    ctx.fillRect(v.x + 5, v.y + 5, v.w, v.h);
-    
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.roundRect(v.x, v.y, v.w, v.h, 8);
-    ctx.fill();
-
-    // Detalhes (Vidros)
-    ctx.fillStyle = "#222";
-    ctx.fillRect(v.x + 5, v.y + 12, v.w - 10, 20); // Parabrisa
-    ctx.fillRect(v.x + 5, v.y + v.h - 20, v.w - 10, 12); // Traseiro
-}
-
-function gameOver() {
-    gameActive = false;
-    const finalScoreValue = Math.floor(score);
-    const record = localStorage.getItem("gms_record") || 0;
-    
-    document.getElementById("ui").style.display = "none";
-    document.getElementById("menu-over").style.display = "flex";
-    document.getElementById("final-score").innerText = finalScoreValue;
-
-    if (finalScoreValue > record) {
-        localStorage.setItem("gms_record", finalScoreValue);
-        document.getElementById("new-record-msg").style.display = "block";
-    } else {
-        document.getElementById("new-record-msg").style.display = "none";
-    }
-}
-
-function share(platform) {
-    const text = `Fiz ${Math.floor(score)} pontos no Retro Highway GMS! Consegue bater meu recorde?`;
-    const url = window.location.href;
-    if(platform === 'wa') window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text + " " + url)}`);
-    else window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`);
-}
-
 function update() {
     if (!gameActive) return;
-
-    // Fundo e Estrada
-    ctx.fillStyle = "#333";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Grama lateral
-    ctx.fillStyle = "#1e7a43";
-    ctx.fillRect(0, 0, 15, canvas.height);
-    ctx.fillRect(canvas.width - 15, 0, 15, canvas.height);
-
-    // Linhas da pista
-    ctx.strokeStyle = "rgba(255,255,255,0.5)";
-    ctx.setLineDash([40, 40]);
-    ctx.lineDashOffset = -(score * 10);
-    for (let i = 1; i < 3; i++) {
-        ctx.beginPath();
-        ctx.moveTo((canvas.width / 3) * i, 0);
-        ctx.lineTo((canvas.width / 3) * i, canvas.height);
-        ctx.stroke();
+    // Estrada e Faixas
+    ctx.fillStyle = "#3d3d3d"; ctx.fillRect(0,0,canvas.width, canvas.height);
+    ctx.strokeStyle = "white"; ctx.setLineDash([30, 30]); ctx.lineDashOffset = -(score*10);
+    for(let i=1; i<3; i++) {
+        ctx.beginPath(); ctx.moveTo(i*(canvas.width/3), 0); ctx.lineTo(i*(canvas.width/3), canvas.height); ctx.stroke();
     }
 
-    // Suavização do movimento do Player
+    // Suavização do Player
     let targetX = (player.lane * (canvas.width / 3)) + (canvas.width / 6) - (player.w / 2);
-    player.x += (targetX - player.x) * 0.15;
-    drawCar(player, "#e74c3c", true);
+    player.x += (targetX - player.x) * 0.2;
+    drawVehicle({...player, color: "#e74c3c", type: 'player'});
 
-    // Gerar Inimigos
-    if (Math.random() < 0.02) {
+    // Spawn de Inimigos
+    if (Math.random() < 0.03) {
         let lane = Math.floor(Math.random() * 3);
+        let isTruck = Math.random() > 0.7;
         enemies.push({
-            x: (lane * (canvas.width / 3)) + (canvas.width / 6) - 25,
-            y: -100, w: 50, h: 85,
-            speed: 2 + Math.random() * 3,
-            color: `hsl(${Math.random() * 360}, 50%, 50%)`
+            x: (lane * (canvas.width / 3)) + (canvas.width / 6) - 30,
+            y: -200, w: 60, h: isTruck ? 160 : 90,
+            type: isTruck ? 'truck' : 'car',
+            color: isTruck ? var(--gms-green) : "#2980b9",
+            speed: 2 + Math.random() * 2
         });
     }
 
-    // Atualizar Inimigos
-    enemies.forEach((e, index) => {
+    enemies.forEach((e, i) => {
         e.y += e.speed + (speed * 0.5);
-        drawCar(e, e.color);
-
-        // Colisão (Hitbox um pouco menor que o desenho para ser justo)
-        if (player.x < e.x + e.w - 10 && player.x + player.w - 10 > e.x &&
-            player.y < e.y + e.h - 10 && player.y + player.h - 10 > e.y) {
-            gameOver();
+        drawVehicle(e);
+        // Colisão
+        if (player.x < e.x + e.w - 5 && player.x + player.w - 5 > e.x && player.y < e.y + e.h - 5 && player.y + player.h - 5 > e.y) {
+            gameActive = false;
+            document.getElementById("menu-over").style.display = "flex";
+            document.getElementById("final-score").innerText = Math.floor(score);
         }
-
-        if (e.y > canvas.height) enemies.splice(index, 1);
+        if (e.y > canvas.height) enemies.splice(i, 1);
     });
 
-    // Gasolina e Score
-    fuel -= 0.025;
-    score += 0.5;
-    speed = 8 + (score / 500);
-
-    if (fuel <= 0) gameOver();
-
-    // UI Update
+    score += 0.5; fuel -= 0.03;
     document.getElementById("fuel-fill").style.width = fuel + "%";
-    document.getElementById("score-txt").innerText = "SCORE: " + Math.floor(score);
+    document.getElementById("score-txt").innerText = Math.floor(score);
     document.getElementById("km-txt").innerText = Math.floor(speed * 15) + " KM/H";
-    document.getElementById("coin-txt").innerText = coins;
 
+    if(fuel <= 0) { gameActive = false; alert("PANE SECA!"); initGame(); }
     rafId = requestAnimationFrame(update);
 }
 
-// Carregar recorde inicial
-document.getElementById("record-display").innerText = localStorage.getItem("gms_record") || 0;
+function share() {
+    const text = `Fiz ${Math.floor(score)} pontos no GMS Highway! Consegue superar?`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`);
+}
 </script>
 </body>
 </html>
+
