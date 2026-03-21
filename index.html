@@ -3,50 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Retro Highway v6.1 - GMS Elite</title>
+    <title>Retro Highway v6.2 - GMS Elite</title>
     <style>
-        :root { --gold: #f1c40f; --gas: #2ecc71; --danger: #e74c3c; --blue: #3498db; }
+        :root { --gold: #f1c40f; --gas: #2ecc71; --blue: #3498db; }
         body { margin: 0; background: #000; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; color: white; touch-action: none; }
         canvas { display: block; margin: auto; background: #222; }
         
-        /* Menus */
         .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); z-index: 100; text-align: center; padding: 20px; }
-        button { padding: 18px 45px; font-size: 22px; font-weight: bold; border: none; border-radius: 50px; background: var(--gold); color: #000; cursor: pointer; box-shadow: 0 5px 0 #b7950b; transition: 0.1s; }
-        button:active { transform: translateY(3px); box-shadow: none; }
-
-        /* HUD */
-        #ui { position: absolute; top: 15px; left: 15px; pointer-events: none; z-index: 10; text-shadow: 2px 2px #000; width: calc(100% - 30px); display: flex; justify-content: space-between; align-items: flex-start; }
-        .stat-left { display: flex; flex-direction: column; gap: 5px; }
-        .stat-right { text-align: right; }
+        button { padding: 18px 45px; font-size: 22px; font-weight: bold; border: none; border-radius: 50px; background: var(--gold); color: #000; cursor: pointer; box-shadow: 0 5px 0 #b7950b; }
+        
+        #ui { position: absolute; top: 15px; left: 15px; pointer-events: none; z-index: 10; width: calc(100% - 30px); display: flex; justify-content: space-between; text-shadow: 2px 2px #000; }
         #fuel-wrap { width: 100px; height: 10px; background: #444; border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.3); margin-top: 4px; }
         #fuel-fill { height: 100%; background: var(--gas); width: 100%; transition: width 0.3s; }
-        
-        .insta { color: var(--blue); text-decoration: none; font-weight: bold; margin-top: 10px; display: block; }
     </style>
 </head>
 <body>
 
 <div id="game-container">
     <div id="menu-main" class="overlay">
-        <h1 style="font-size: 42px; color: var(--gold); margin: 0;">HIGHWAY v6.1</h1>
-        <p style="opacity: 0.7;">GMS ELITE EDITION</p>
+        <h1 style="font-size: 42px; color: var(--gold); margin: 0;">HIGHWAY v6.2</h1>
         <p>RECORDE: <span id="record-display">0</span></p>
         <button onclick="initGame()">CORRER AGORA</button>
-        <div style="margin-top: 30px;">
-            <small>Criado por Gustavo Moreira</small>
-            <a href="https://www.instagram.com/eng.florestalgustavoms" class="insta" target="_blank">@eng.florestalgustavoms</a>
-        </div>
+        <p>Gustavo Moreira | @eng.florestalgustavoms</p>
     </div>
 
     <div id="ui" style="display: none;">
-        <div class="stat-left">
+        <div>
             <div id="km-txt" style="font-weight: bold;">0 KM/H</div>
             <div id="fuel-wrap"><div id="fuel-fill"></div></div>
-            <div style="font-size: 10px; letter-spacing: 1px;">GASOLINA</div>
+            <small>GASOLINA</small>
         </div>
-        <div class="stat-right">
-            <div style="font-size: 22px; color: var(--gold); font-weight: bold;">🪙 <span id="coin-txt">0</span></div>
-            <div id="score-txt" style="font-size: 14px; opacity: 0.9;">0</div>
+        <div style="text-align: right;">
+            <div style="font-size: 22px; color: var(--gold);">🪙 <span id="coin-txt">0</span></div>
+            <div id="score-txt">SCORE: 0</div>
         </div>
     </div>
 
@@ -57,7 +46,6 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// --- SETUP RESPONSIVO ---
 function resize() {
     canvas.width = Math.min(window.innerWidth, 450);
     canvas.height = window.innerHeight;
@@ -66,206 +54,156 @@ window.addEventListener('resize', resize);
 resize();
 
 const laneWidth = canvas.width / 3;
-
-// --- VARIÁVEIS DE ESTADO ---
 let gameActive = false;
 let score = 0, speed = 8, coins = 0, fuel = 100;
 let enemies = [], items = [], rain = [], trees = [];
 let night = false, explosionActive = false, explosionSize = 0;
-let bonusText = "", bonusTimer = 0;
-
 let player = { lane: 1, x: 0, y: 0, w: 55, h: 90 };
 
-// --- ÁUDIO ENGINE ---
+// --- Áudio Engine ---
 let audioCtx, osc, gain;
 function setupAudio() {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    osc = audioCtx.createOscillator();
-    gain = audioCtx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(55, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start();
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        osc = audioCtx.createOscillator();
+        gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(55, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start();
+    } catch(e) { console.log("Audio not supported"); }
 }
 
 function initGame() {
-    // Reset Completo (Correção v6.1)
-    enemies = []; items = []; rain = []; trees = [];
-    score = 0; speed = 8; coins = 0; fuel = 100;
-    explosionActive = false; explosionSize = 0; bonusTimer = 0;
-    
+    // LIMPEZA TOTAL DE OBJETOS (Correção do erro de reiniciar)
+    enemies = []; 
+    items = []; 
+    rain = []; 
+    trees = [];
+    score = 0; 
+    speed = 8; 
+    coins = 0; 
+    fuel = 100;
+    explosionActive = false; 
+    explosionSize = 0;
+
     document.getElementById("menu-main").style.display = "none";
     document.getElementById("ui").style.display = "flex";
-    document.getElementById("record-display").innerText = localStorage.getItem("gms_record") || 0;
-
-    player.x = 1 * laneWidth + (laneWidth/2 - 27);
+    
+    player.lane = 1;
+    player.x = player.lane * laneWidth + (laneWidth/2 - 27);
     player.y = canvas.height - 160;
 
-    // Inicialização de Partículas
-    for(let i=0; i<60; i++) rain.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, s: 10+Math.random()*10});
-    for(let i=0; i<8; i++) trees.push({y: i * (canvas.height/6), side: i%2});
+    // Criar ambiente limpo
+    for(let i=0; i<50; i++) rain.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, s: 8+Math.random()*8});
+    for(let i=0; i<6; i++) trees.push({y: i * (canvas.height/5), side: i%2});
 
     if(!audioCtx) setupAudio();
     gameActive = true;
     requestAnimationFrame(mainLoop);
 }
 
-// --- CONTROLES (SWIPE OPTIMIZED) ---
+// --- Controles ---
 let touchStartX = 0;
 document.addEventListener("touchstart", e => touchStartX = e.touches[0].clientX);
 document.addEventListener("touchmove", e => {
     if(!gameActive) return;
     let delta = e.touches[0].clientX - touchStartX;
-    if(Math.abs(delta) > 45) {
+    if(Math.abs(delta) > 50) {
         player.lane = Math.max(0, Math.min(2, player.lane + (delta > 0 ? 1 : -1)));
         touchStartX = e.touches[0].clientX;
-        if(navigator.vibrate) navigator.vibrate(20);
     }
 }, {passive: false});
 
-// --- DESENHO DE VEÍCULOS ---
 function drawCar(v, color, type) {
     ctx.save();
-    // Sombras e Rodas
+    // Rodas e Sombra
     ctx.fillStyle = "#111";
     ctx.fillRect(v.x-2, v.y+15, 5, 20); ctx.fillRect(v.x+v.w-3, v.y+15, 5, 20);
     ctx.fillRect(v.x-2, v.y+v.h-35, 5, 20); ctx.fillRect(v.x+v.w-3, v.y+v.h-35, 5, 20);
 
-    // Carroceria
     ctx.fillStyle = color;
     ctx.beginPath(); ctx.roundRect(v.x, v.y, v.w, v.h, 10); ctx.fill();
 
-    // Vidros
-    ctx.fillStyle = night ? "#000" : "#1a1a1a";
-    ctx.fillRect(v.x + 10, v.y + 18, v.w - 20, 25);
+    // Vidro
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fillRect(v.x+8, v.y+15, v.w-16, 25);
 
-    if(type === 'police' && Math.floor(score/8)%2 === 0) {
-        ctx.fillStyle = "red"; ctx.fillRect(v.x+5, v.y+45, v.w/2-5, 6);
-        ctx.fillStyle = "blue"; ctx.fillRect(v.x+v.w/2, v.y+45, v.w/2-5, 6);
-    }
-    
-    if(night) {
-        ctx.shadowBlur = 15; ctx.shadowColor = "white";
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(v.x+8, v.y-5, 12, 8); ctx.fillRect(v.x+v.w-20, v.y-5, 12, 8);
+    if(type === 'police') {
+        ctx.fillStyle = (Math.floor(Date.now()/100)%2===0) ? "red" : "blue";
+        ctx.fillRect(v.x+10, v.y+45, v.w-20, 6);
     }
     ctx.restore();
 }
 
-function drawGMSTruck(v) {
-    ctx.save();
-    ctx.shadowBlur = 10; ctx.shadowColor = "rgba(46, 204, 113, 0.5)";
-    ctx.fillStyle = "#f8f9fa";
-    ctx.beginPath(); ctx.roundRect(v.x, v.y, v.w, v.h, 4); ctx.fill();
-    
-    // Logo Degradê GMS
-    let g = ctx.createLinearGradient(v.x, v.y, v.x, v.y+v.h);
-    g.addColorStop(0, "#2ecc71"); g.addColorStop(1, "#3498db");
-    ctx.fillStyle = g;
-    ctx.fillRect(v.x + 5, v.y + 40, v.w - 10, v.h - 60);
-    
-    ctx.fillStyle = "white"; ctx.font = "bold 16px sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("GMS", v.x + v.w/2, v.y + 80);
-    ctx.restore();
-}
-
-// --- SPAWN SYSTEM (ANTI-PAREDÃO v6.1) ---
 function handleSpawning() {
-    if(Math.floor(score) % 70 === 0) {
-        let lane = Math.floor(Math.random()*3);
-        // Garante corredor livre
-        if(enemies.filter(e => e.y < 200).length >= 2) return;
+    if(Math.floor(score) % 80 === 0) {
+        // Anti-Paredão: Só spawna se houver pista livre
+        if(enemies.filter(e => e.y < 250).length >= 2) return;
 
+        let lane = Math.floor(Math.random()*3);
         let r = Math.random();
-        if(r < 0.06) { // Special GMS Truck
-            enemies.push({ type: "gms", lane, x: lane*laneWidth+(laneWidth/2-35), y:-250, w:70, h:190, speed: 4, bonus: false });
-        } else {
-            let type = r > 0.85 ? "truck" : (r > 0.65 ? "police" : "car");
-            enemies.push({ 
-                type, lane, 
-                x: lane*laneWidth+(laneWidth/2-27), 
-                y:-150, w:55, 
-                h: type === "truck" ? 175 : 90, 
-                speed: 4 + Math.random(),
-                pTimer: 0
-            });
-        }
+        
+        // ZONA DE SEGURANÇA: Polícia não spawna na cara do player se ele estiver rápido
+        let type = r > 0.85 ? "truck" : (r > 0.65 ? "police" : "car");
+        
+        enemies.push({ 
+            type, lane, 
+            x: lane * laneWidth + (laneWidth/2 - 27), 
+            y: -200, w: 55, 
+            h: type === "truck" ? 170 : 90, 
+            speed: 3 + Math.random() * 2
+        });
     }
     
-    if(Math.random() < 0.015) {
+    if(Math.random() < 0.01) {
         let l = Math.floor(Math.random()*3);
         items.push({ type: Math.random()<0.8 ? "coin" : "fuel", x: l*laneWidth + (laneWidth/2), y: -50 });
     }
 }
 
-// --- MAIN LOOP ---
 function mainLoop() {
     if(!gameActive) return;
 
-    night = (Math.floor(score/6000) % 2 !== 0);
-    ctx.fillStyle = night ? "#111" : "#3d3d3d";
+    ctx.fillStyle = "#3d3d3d";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Chuva Suave
-    ctx.strokeStyle = "rgba(174, 194, 224, 0.3)";
-    ctx.lineWidth = 1;
-    rain.forEach(r => {
-        ctx.beginPath(); ctx.moveTo(r.x, r.y); ctx.lineTo(r.x, r.y + r.s/2); ctx.stroke();
-        r.y += r.s; if(r.y > canvas.height) r.y = -20;
-    });
-
-    // Estrada
-    ctx.fillStyle = night ? "#0a1f0a" : "#1e7a43";
+    // Estrada Lateral
+    ctx.fillStyle = "#1e7a43";
     ctx.fillRect(0,0,15,canvas.height); ctx.fillRect(canvas.width-15,0,15,canvas.height);
     
+    // Faixas
     ctx.strokeStyle = "rgba(255,255,255,0.4)";
-    ctx.setLineDash([40, 40]); ctx.lineDashOffset = -(score * 6);
+    ctx.setLineDash([30, 30]); ctx.lineDashOffset = -(score * 8);
     for(let i=1; i<3; i++) {
         ctx.beginPath(); ctx.moveTo(i*laneWidth, 0); ctx.lineTo(i*laneWidth, canvas.height); ctx.stroke();
     }
 
-    // Árvores
-    trees.forEach(t => {
-        t.y += speed;
-        ctx.fillStyle = "#4a2c2a";
-        ctx.fillRect(t.side === 0 ? 4 : canvas.width-12, t.y, 8, 15);
-        if(t.y > canvas.height) t.y = -100;
-    });
-
-    // Player Movement Suave
+    // Movimento Player
     let tx = player.lane * laneWidth + (laneWidth/2 - 27);
     player.x += (tx - player.x) * 0.2;
     drawCar(player, "#e74c3c", "player");
 
     handleSpawning();
 
-    // Entidades (Inimigos)
+    // Inimigos
     enemies.forEach((e, i) => {
-        e.y += e.speed + (speed * 0.25);
+        e.y += e.speed + (speed * 0.3);
         
-        // IA Polícia v6.1
-        if(e.type === "police" && e.y < player.y - 120) {
-            e.pTimer++;
-            if(e.pTimer % 90 === 0) {
+        // IA POLÍCIA CORRIGIDA: Não bate de propósito, tenta cercar mantendo distância
+        if(e.type === "police" && e.y < player.y - 150) {
+            if(Math.random() < 0.01) { // Mudança de faixa lenta
                 if(e.lane < player.lane) e.lane++; else if(e.lane > player.lane) e.lane--;
                 e.x = e.lane * laneWidth + (laneWidth/2 - 27);
             }
         }
 
-        if(e.type === "gms") drawGMSTruck(e);
-        else drawCar(e, e.type === "truck" ? "#7f8c8d" : (e.type === "police" ? "#2c3e50" : "#2980b9"), e.type);
+        drawCar(e, e.type === "truck" ? "#7f8c8d" : (e.type === "police" ? "#2c3e50" : "#2980b9"), e.type);
 
-        // Colisão Aprimorada
-        if(player.x < e.x+e.w-8 && player.x+player.w-8 > e.x && player.y < e.y+e.h-8 && player.y+player.h-8 > e.y) {
-            if(e.type === "gms" && !e.bonus) {
-                coins += 100; bonusText = "GMS LOGÍSTICA +100"; bonusTimer = 120; e.bonus = true;
-                if(navigator.vibrate) navigator.vibrate([30, 30]);
-            } else if(e.type !== "gms") {
-                explosionActive = true; gameActive = false;
-                if(navigator.vibrate) navigator.vibrate([100, 50, 100]);
-            }
+        // Colisão Precisa
+        if(player.x < e.x+e.w-10 && player.x+player.w-10 > e.x && player.y < e.y+e.h-10 && player.y+player.h-10 > e.y) {
+            explosionActive = true; gameActive = false;
         }
         if(e.y > canvas.height) { enemies.splice(i,1); score += 50; }
     });
@@ -273,51 +211,41 @@ function mainLoop() {
     // Itens
     items.forEach((it, i) => {
         it.y += speed;
-        ctx.fillStyle = it.type === "coin" ? varColor('--gold') : varColor('--gas');
+        ctx.fillStyle = it.type === "coin" ? "#f1c40f" : "#2ecc71";
         ctx.beginPath(); ctx.arc(it.x, it.y, 12, 0, Math.PI*2); ctx.fill();
         
         if(player.x < it.x+15 && player.x+player.w > it.x-15 && player.y < it.y+15 && player.y+player.h > it.y-15) {
             if(it.type === "coin") coins += 15; else fuel = Math.min(100, fuel+25);
             items.splice(i,1);
-            if(navigator.vibrate) navigator.vibrate(25);
         }
     });
 
-    // HUD Update & Combustível v6.1 (Balanceado)
-    fuel -= 0.015;
-    if(fuel <= 0) { alert("PANE SECA! Sua gasolina acabou."); location.reload(); }
+    fuel -= 0.018;
+    if(fuel <= 0) { alert("PANE SECA!"); location.reload(); }
     
-    score += 0.8; speed = 8 + (score/3500);
-    osc.frequency.setTargetAtTime(55 + (speed*5), audioCtx.currentTime, 0.1);
+    score += 1; speed = 8 + (score/4000);
+    if(osc) osc.frequency.setTargetAtTime(55 + (speed*5), audioCtx.currentTime, 0.1);
 
     document.getElementById("fuel-fill").style.width = fuel + "%";
     document.getElementById("score-txt").innerText = "SCORE: " + Math.floor(score);
     document.getElementById("km-txt").innerText = Math.floor(speed * 18) + " KM/H";
     document.getElementById("coin-txt").innerText = coins;
 
-    // Mensagem de Bônus GMS
-    if(bonusTimer > 0) {
-        ctx.fillStyle = "white"; ctx.font = "bold 24px sans-serif"; ctx.textAlign = "center";
-        ctx.shadowBlur = 10; ctx.shadowColor = "black";
-        ctx.fillText(bonusText, canvas.width/2, canvas.height/2); bonusTimer--;
-        ctx.shadowBlur = 0;
-    }
-
     if(explosionActive) {
         ctx.fillStyle = "orange"; ctx.beginPath(); 
-        ctx.arc(player.x+27, player.y+45, explosionSize*5, 0, Math.PI*2); ctx.fill();
+        ctx.arc(player.x+27, player.y+45, explosionSize*6, 0, Math.PI*2); ctx.fill();
         explosionSize++;
-        if(explosionSize > 25) {
+        if(explosionSize > 20) {
             let rec = localStorage.getItem("gms_record") || 0;
             if(score > rec) localStorage.setItem("gms_record", Math.floor(score));
-            alert("GAME OVER!\nScore: " + Math.floor(score)); location.reload();
+            alert("GAME OVER! Score: " + Math.floor(score));
+            location.reload();
         }
     }
 
     if(gameActive) requestAnimationFrame(mainLoop);
 }
 
-function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 document.getElementById("record-display").innerText = localStorage.getItem("gms_record") || 0;
 </script>
 </body>
