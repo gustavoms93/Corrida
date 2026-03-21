@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Car Racing</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #333; font-family: sans-serif; }
+        canvas { display: block; margin: 0 auto; background: #555; border-left: 5px dashed #fff; border-right: 5px dashed #fff; }
+        #score { position: absolute; top: 20px; left: 20px; color: white; font-size: 24px; }
+    </style>
+</head>
+<body>
+
+    <div id="score">Pontos: 0</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+
+        canvas.width = 400;
+        canvas.height = window.innerHeight;
+
+        // Configurações do Carro do Jogador
+        const player = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 120,
+            w: 50,
+            h: 80,
+            speed: 7,
+            color: '#e74c3c'
+        };
+
+        let enemies = [];
+        let score = 0;
+        let gameActive = true;
+        let keys = {};
+
+        // Detectar Teclas
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        function spawnEnemy() {
+            const x = Math.random() * (canvas.width - 50);
+            enemies.push({ x, y: -100, w: 50, h: 80, speed: 5 + (score / 500) });
+        }
+
+        function drawRect(obj, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+            // Detalhe simples de "janela" do carro
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.fillRect(obj.x + 10, obj.y + 10, obj.w - 20, 20);
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            // Movimento do Jogador
+            if ((keys['ArrowLeft'] || keys['KeyA']) && player.x > 0) player.x -= player.speed;
+            if ((keys['ArrowRight'] || keys['KeyD']) && player.x < canvas.width - player.w) player.x += player.speed;
+
+            // Gerar inimigos
+            if (Math.random() < 0.02) spawnEnemy();
+
+            enemies.forEach((enemy, index) => {
+                enemy.y += enemy.speed;
+
+                // Colisão
+                if (player.x < enemy.x + enemy.w &&
+                    player.x + player.w > enemy.x &&
+                    player.y < enemy.y + enemy.h &&
+                    player.y + player.h > enemy.y) {
+                    gameActive = false;
+                    alert("Game Over! Pontuação: " + Math.floor(score));
+                    location.reload(); 
+                }
+
+                // Remover inimigos que saíram da tela
+                if (enemy.y > canvas.height) {
+                    enemies.splice(index, 1);
+                    score += 10;
+                }
+            });
+
+            score += 0.1; // Pontuação por tempo
+            scoreElement.innerText = "Pontos: " + Math.floor(score);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Desenhar Estrada (Faixa central)
+            ctx.strokeStyle = "#fff";
+            ctx.setLineDash([20, 20]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+
+            // Desenhar Jogador e Inimigos
+            drawRect(player, player.color);
+            enemies.forEach(enemy => drawRect(enemy, '#2ecc71'));
+
+            update();
+            requestAnimationFrame(draw);
+        }
+
+        draw();
+    </script>
+</body>
+</html>
