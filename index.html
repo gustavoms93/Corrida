@@ -2,65 +2,169 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Car Racing</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Corrida Mobile</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #333; font-family: sans-serif; }
-        canvas { display: block; margin: 0 auto; background: #555; border-left: 5px dashed #fff; border-right: 5px dashed #fff; }
-        #score { position: absolute; top: 20px; left: 20px; color: white; font-size: 24px; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #2c3e50; 
+            font-family: sans-serif; 
+            user-select: none; /* Impede seleção de texto acidental */
+            touch-action: none; /* Melhora a resposta do toque */
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        canvas { 
+            background: #555; 
+            border-left: 5px dashed #fff; 
+            border-right: 5px dashed #fff;
+            /* O canvas ocupa a maior parte da altura, deixando espaço para os botões */
+            height: 80vh; 
+            width: auto;
+            max-width: 100%;
+        }
+
+        #score { 
+            position: absolute; 
+            top: 10px; 
+            left: 10px; 
+            color: white; 
+            font-size: 20px; 
+            background: rgba(0,0,0,0.5); 
+            padding: 5px 10px; 
+            border-radius: 5px;
+        }
+
+        /* Área dos Botões de Controle */
+        #controls {
+            width: 100%;
+            height: 20vh; /* Ocupa os 20% restantes da altura */
+            background: #34495e;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        .btn-control {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 4px solid #fff;
+            border-radius: 50%;
+            color: white;
+            font-size: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+            transition: background 0.1s;
+        }
+
+        .btn-control:active {
+            background: rgba(255, 255, 255, 0.5);
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+        }
+
     </style>
 </head>
 <body>
 
-    <div id="score">Pontos: 0</div>
-    <canvas id="gameCanvas"></canvas>
+    <div id="game-container">
+        <div id="score">Pontos: 0</div>
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="controls">
+            <div class="btn-control" id="btn-left">←</div>
+            <div class="btn-control" id="btn-right">→</div>
+        </div>
+    </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
 
-        canvas.width = 400;
-        canvas.height = window.innerHeight;
+        // Ajustar o canvas para a proporção da tela
+        canvas.width = 400; // Largura lógica do jogo
+        canvas.height = canvas.offsetHeight * (canvas.width / canvas.offsetWidth); // Altura lógica proporcional
 
         // Configurações do Carro do Jogador
         const player = {
             x: canvas.width / 2 - 25,
-            y: canvas.height - 120,
+            y: canvas.height - 120, // Posicionado acima da área de controle
             w: 50,
             h: 80,
-            speed: 7,
+            speed: 10, // Aumentei um pouco a velocidade para mobile
             color: '#e74c3c'
         };
 
         let enemies = [];
         let score = 0;
         let gameActive = true;
-        let keys = {};
+        
+        // Estado dos controles (teclado ou toque)
+        let moveLeft = false;
+        let moveRight = false;
 
-        // Detectar Teclas
-        window.addEventListener('keydown', e => keys[e.code] = true);
-        window.addEventListener('keyup', e => keys[e.code] = false);
+        // --- CONTROLES DE TOQUE ---
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+
+        // Toque na Esquerda
+        btnLeft.addEventListener('touchstart', e => { e.preventDefault(); moveLeft = true; });
+        btnLeft.addEventListener('touchend', e => { e.preventDefault(); moveLeft = false; });
+        
+        // Toque na Direita
+        btnRight.addEventListener('touchstart', e => { e.preventDefault(); moveRight = true; });
+        btnRight.addEventListener('touchend', e => { e.preventDefault(); moveRight = false; });
+
+        // --- CONTROLES DE TECLADO (Mantidos para PC) ---
+        window.addEventListener('keydown', e => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') moveLeft = true;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') moveRight = true;
+        });
+        window.addEventListener('keyup', e => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') moveLeft = false;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') moveRight = false;
+        });
+
+        // --- LÓGICA DO JOGO ---
 
         function spawnEnemy() {
             const x = Math.random() * (canvas.width - 50);
-            enemies.push({ x, y: -100, w: 50, h: 80, speed: 5 + (score / 500) });
+            enemies.push({ x, y: -100, w: 50, h: 80, speed: 6 + (score / 1000) });
         }
 
         function drawRect(obj, color) {
             ctx.fillStyle = color;
             ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-            // Detalhe simples de "janela" do carro
+            // Janela do carro
             ctx.fillStyle = 'rgba(255,255,255,0.3)';
             ctx.fillRect(obj.x + 10, obj.y + 10, obj.w - 20, 20);
+            // Faróis
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(obj.x + 5, obj.y + obj.h - 10, 10, 5);
+            ctx.fillRect(obj.x + obj.w - 15, obj.y + obj.h - 10, 10, 5);
         }
 
         function update() {
             if (!gameActive) return;
 
-            // Movimento do Jogador
-            if ((keys['ArrowLeft'] || keys['KeyA']) && player.x > 0) player.x -= player.speed;
-            if ((keys['ArrowRight'] || keys['KeyD']) && player.x < canvas.width - player.w) player.x += player.speed;
+            // Movimento do Jogador (Teclado ou Toque)
+            if (moveLeft && player.x > 0) player.x -= player.speed;
+            if (moveRight && player.x < canvas.width - player.w) player.x += player.speed;
 
             // Gerar inimigos
             if (Math.random() < 0.02) spawnEnemy();
@@ -78,23 +182,26 @@
                     location.reload(); 
                 }
 
-                // Remover inimigos que saíram da tela
+                // Remover inimigos
                 if (enemy.y > canvas.height) {
                     enemies.splice(index, 1);
-                    score += 10;
+                    score += 50; // Mais pontos por carro desviado
                 }
             });
 
-            score += 0.1; // Pontuação por tempo
+            score += 0.2; // Pontuação por tempo
             scoreElement.innerText = "Pontos: " + Math.floor(score);
         }
 
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Limpar tela com cor da estrada
+            ctx.fillStyle = "#555";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Desenhar Estrada (Faixa central)
+            // Desenhar Faixas da Estrada
             ctx.strokeStyle = "#fff";
-            ctx.setLineDash([20, 20]);
+            ctx.lineWidth = 6;
+            ctx.setLineDash([30, 30]);
             ctx.beginPath();
             ctx.moveTo(canvas.width / 2, 0);
             ctx.lineTo(canvas.width / 2, canvas.height);
@@ -108,6 +215,8 @@
             requestAnimationFrame(draw);
         }
 
+        // Iniciar
+        spawnEnemy();
         draw();
     </script>
 </body>
