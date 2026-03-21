@@ -1,281 +1,241 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Retro Highway v2.0</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Retro Highway v3.0</title>
+    <style>
+        :root { --main-gold: #f1c40f; --night-overlay: rgba(0, 10, 40, 0.4); }
+        body { margin: 0; background: #000; font-family: 'Segoe UI', sans-serif; color: white; overflow: hidden; touch-action: none; }
+        #game-container { position: relative; width: 100vw; height: 100vh; display: flex; flex-direction: column; }
+        canvas { background: #333; flex: 1; width: 100%; max-width: 450px; margin: auto; display: block; }
+        
+        #ui-layer { position: absolute; top: 0; width: 100%; pointer-events: none; }
+        #score-box { position: absolute; top: 20px; right: 20px; text-align: right; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 8px; border: 2px solid var(--main-gold); }
+        
+        #menu { position: absolute; inset: 0; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; text-align: center; padding: 20px; }
+        button { padding: 18px 40px; font-size: 24px; font-weight: bold; border: none; border-radius: 50px; background: var(--main-gold); color: #000; cursor: pointer; transition: 0.3s; box-shadow: 0 0 20px var(--main-gold); }
+        button:hover { transform: scale(1.1); }
 
-<style>
-body{
-margin:0;
-background:#1a252f;
-font-family:Arial;
-color:white;
-overflow:hidden;
-text-align:center;
-}
-
-canvas{
-background:#444;
-display:block;
-margin:auto;
-}
-
-#menu{
-position:absolute;
-top:50%;
-left:50%;
-transform:translate(-50%,-50%);
-text-align:center;
-}
-
-button{
-padding:15px 30px;
-font-size:20px;
-border:none;
-border-radius:8px;
-background:#f1c40f;
-cursor:pointer;
-}
-
-#score{
-position:absolute;
-top:10px;
-right:10px;
-font-size:20px;
-background:#000;
-padding:10px;
-border-radius:6px;
-}
-
-#credits{
-position:absolute;
-bottom:10px;
-width:100%;
-font-size:14px;
-color:#ccc;
-}
-
-#credits a{
-color:#3498db;
-text-decoration:none;
-font-weight:bold;
-}
-</style>
+        #touch-controller { width: 100%; height: 120px; background: #111; border-top: 4px solid var(--main-gold); display: flex; align-items: center; justify-content: center; font-style: italic; color: #555; }
+        
+        .insta-link { color: #3498db; text-decoration: none; font-weight: bold; margin-top: 15px; display: block; }
+    </style>
 </head>
-
 <body>
 
-<div id="menu">
-<h1>🎮 Retro Highway v2.0</h1>
+<div id="game-container">
+    <div id="menu">
+        <h1 style="font-size: 40px; margin-bottom: 5px;">HIGHWAY 3.0</h1>
+        <p style="color: var(--main-gold); margin-bottom: 30px;">RECORD: <span id="record-val">0</span></p>
+        <button onclick="initGame()">CORRER AGORA</button>
+        <a href="https://www.instagram.com/eng.florestalgustavoms" class="insta-link" target="_blank">@eng.florestalgustavoms</a>
+    </div>
 
-<p>Recorde: <span id="record">0</span></p>
+    <div id="ui-layer">
+        <div id="score-box">
+            <div id="km">0 KM/H</div>
+            <div id="points" style="font-size: 24px; color: var(--main-gold);">0</div>
+        </div>
+    </div>
 
-<button onclick="startGame()">▶ INICIAR</button>
+    <canvas id="gameCanvas"></canvas>
 
-<br><br>
-
-<p>
-Criado por<br>
-<strong>Gustavo Moreira</strong><br><br>
-
-Instagram<br>
-
-<a href="https://www.instagram.com/eng.florestalgustavoms?igsh=MTRqOHE0ZjcyOXdkMg==" target="_blank">
-@eng.florestalgustavoms
-</a>
-
-</p>
-</div>
-
-<div id="score">0</div>
-
-<canvas id="gameCanvas" width="400" height="600"></canvas>
-
-<div id="credits">
-Retro Highway v2.0
+    <div id="touch-controller">DESLIZE PARA OS LADOS</div>
 </div>
 
 <script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+let gameRunning = false;
+let score = 0;
+let speed = 8;
+let nightMode = false;
+let trees = [];
+let enemies = [];
+const laneWidth = 133; // 400/3
 
-const canvas=document.getElementById("gameCanvas")
-const ctx=canvas.getContext("2d")
+// Configurações do Jogador
+let player = { lane: 1, x: 170, y: 0, w: 55, h: 95 };
 
-let gameRunning=false
-let score=0
-let record=localStorage.getItem("record")||0
+// Áudio (Sintetizador de Motor)
+let audioCtx, oscillator, gainNode;
 
-document.getElementById("record").innerText=record
-
-let laneWidth=canvas.width/3
-
-let player={
-lane:1,
-x:170,
-y:470,
-w:55,
-h:90
+function initAudio() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    oscillator = audioCtx.createOscillator();
+    gainNode = audioCtx.createGain();
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.setValueAtTime(60, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.start();
 }
 
-let enemies=[]
-
-let roadOffset=0
-
-let level=1
-
-function startGame(){
-
-document.getElementById("menu").style.display="none"
-
-score=0
-enemies=[]
-gameRunning=true
-
-loop()
-
+function updateEngineSound() {
+    if (oscillator) {
+        let freq = 60 + (speed * 5);
+        oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.1);
+    }
 }
 
-function move(dir){
-
-player.lane=Math.max(0,Math.min(2,player.lane+dir))
-
+function initGame() {
+    canvas.width = 400;
+    canvas.height = window.innerHeight - 120;
+    player.y = canvas.height - 150;
+    document.getElementById("menu").style.display = "none";
+    document.getElementById("record-val").innerText = localStorage.getItem("highway_record") || 0;
+    
+    if(!audioCtx) initAudio();
+    
+    score = 0;
+    speed = 8;
+    enemies = [];
+    trees = Array.from({length: 8}, (_, i) => ({y: i * 150, side: i % 2}));
+    gameRunning = true;
+    requestAnimationFrame(loop);
 }
 
-window.onkeydown=e=>{
-if(e.key==="ArrowLeft")move(-1)
-if(e.key==="ArrowRight")move(1)
+// Controle Touch Deslizante
+let startX = 0;
+document.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+document.addEventListener('touchmove', e => {
+    if (!gameRunning) return;
+    let diff = e.touches[0].clientX - startX;
+    if (Math.abs(diff) > 40) {
+        if (diff > 0) move(1); else move(-1);
+        startX = e.touches[0].clientX;
+    }
+});
+
+function move(dir) {
+    player.lane = Math.max(0, Math.min(2, player.lane + dir));
 }
 
-function spawnEnemy(){
+function drawVehicle(v, type) {
+    ctx.save();
+    // Sombra
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.fillRect(v.x + 5, v.y + 5, v.w, v.h);
 
-let lane=Math.floor(Math.random()*3)
+    // Corpo
+    if(type === 'player') ctx.fillStyle = "#e74c3c";
+    else if(type === 'truck') ctx.fillStyle = "#95a5a6";
+    else if(type === 'police') ctx.fillStyle = "#2c3e50";
+    else ctx.fillStyle = "#3498db";
 
-enemies.push({
+    ctx.beginPath();
+    ctx.roundRect(v.x, v.y, v.w, v.h, 8);
+    ctx.fill();
 
-lane:lane,
-x:lane*laneWidth+(laneWidth/2-27),
-y:-120,
-w:55,
-h:90,
-speed:4+level
+    // Vidros
+    ctx.fillStyle = "#111";
+    ctx.fillRect(v.x + 8, v.y + 20, v.w - 16, 25);
+    
+    // Sirene Polícia
+    if(type === 'police' && Math.floor(Date.now()/100) % 2 === 0) {
+        ctx.fillStyle = "red"; ctx.fillRect(v.x + 5, v.y + 45, v.w/2, 5);
+        ctx.fillStyle = "blue"; ctx.fillRect(v.x + v.w/2, v.y + 45, v.w/2, 5);
+    }
 
-})
-
+    // Faróis Noite
+    if(nightMode) {
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "yellow";
+        ctx.fillStyle = "yellow";
+        ctx.fillRect(v.x + 5, v.y - 5, 15, 10);
+        ctx.fillRect(v.x + v.w - 20, v.y - 5, 15, 10);
+    }
+    ctx.restore();
 }
 
-function drawCar(v,color){
+function spawnEnemy() {
+    let lane = Math.floor(Math.random() * 3);
+    if (enemies.some(e => e.lane === lane && e.y < 200)) return;
+    
+    let typeRand = Math.random();
+    let type = 'car';
+    let h = 95;
+    if(typeRand > 0.8) { type = 'truck'; h = 180; }
+    else if(typeRand > 0.6) { type = 'police'; }
 
-ctx.fillStyle=color
-ctx.fillRect(v.x,v.y,v.w,v.h)
-
-ctx.fillStyle="black"
-ctx.fillRect(v.x-2,v.y+10,5,20)
-ctx.fillRect(v.x+v.w-3,v.y+10,5,20)
-ctx.fillRect(v.x-2,v.y+v.h-30,5,20)
-ctx.fillRect(v.x+v.w-3,v.y+v.h-30,5,20)
-
+    enemies.push({
+        lane, type, h,
+        x: lane * laneWidth + (laneWidth/2 - 27),
+        y: -200, w: 55,
+        speed: speed * (type === 'truck' ? 0.8 : 0.6)
+    });
 }
 
-function explosion(x,y){
+function loop() {
+    if (!gameRunning) return;
 
-ctx.fillStyle="orange"
+    // Lógica Dia/Noite
+    nightMode = (Math.floor(score/5000) % 2 !== 0);
+    ctx.fillStyle = nightMode ? "#1a1a1a" : "#444";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-for(let i=0;i<10;i++){
+    // Grama e Árvores
+    ctx.fillStyle = nightMode ? "#0d2b1a" : "#27ae60";
+    ctx.fillRect(0, 0, 20, canvas.height);
+    ctx.fillRect(canvas.width - 20, 0, 20, canvas.height);
 
-ctx.beginPath()
-ctx.arc(x+Math.random()*60,y+Math.random()*60,10,0,Math.PI*2)
-ctx.fill()
+    trees.forEach(t => {
+        t.y += speed;
+        ctx.fillStyle = "#3e2723"; // Tronco
+        let x = t.side === 0 ? 5 : canvas.width - 15;
+        ctx.fillRect(x, t.y, 10, 20);
+        ctx.fillStyle = nightMode ? "#062206" : "#2ecc71"; // Folhas
+        ctx.beginPath(); ctx.arc(x+5, t.y-10, 15, 0, Math.PI*2); ctx.fill();
+        if(t.y > canvas.height) t.y = -50;
+    });
 
+    // Estrada (Faixas)
+    ctx.strokeStyle = "white";
+    ctx.setLineDash([30, 30]);
+    ctx.lineDashOffset = -(score * 2);
+    for(let i=1; i<3; i++) {
+        ctx.beginPath(); ctx.moveTo(i*laneWidth, 0); ctx.lineTo(i*laneWidth, canvas.height); ctx.stroke();
+    }
+
+    // Jogador Suave
+    let targetX = player.lane * laneWidth + (laneWidth/2 - 27);
+    player.x += (targetX - player.x) * 0.15;
+    drawVehicle(player, 'player');
+
+    // Inimigos
+    if(Math.random() < 0.02) spawnEnemy();
+    enemies.forEach((e, i) => {
+        e.y += e.speed + (speed * 0.2);
+        drawVehicle(e, e.type);
+
+        // Colisão Hitbox
+        if(player.x < e.x+e.w-5 && player.x+player.w-5 > e.x && player.y < e.y+e.h-5 && player.y+player.h-5 > e.y) {
+            gameRunning = false;
+            gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+            let record = localStorage.getItem("highway_record") || 0;
+            if(score > record) localStorage.setItem("highway_record", Math.floor(score));
+            alert("FIM DA LINHA! Score: " + Math.floor(score));
+            location.reload();
+        }
+        if(e.y > canvas.height) { enemies.splice(i, 1); score += 100; }
+    });
+
+    // Efeito Noite (Overlay)
+    if(nightMode) {
+        ctx.fillStyle = "rgba(0, 10, 40, 0.3)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    score += 1;
+    speed = 8 + (score / 2000);
+    document.getElementById("points").innerText = Math.floor(score);
+    document.getElementById("km").innerText = Math.floor(speed * 15) + " KM/H";
+    
+    updateEngineSound();
+    requestAnimationFrame(loop);
 }
-
-}
-
-function loop(){
-
-if(!gameRunning)return
-
-ctx.fillStyle="#555"
-ctx.fillRect(0,0,canvas.width,canvas.height)
-
-ctx.fillStyle="#27ae60"
-ctx.fillRect(0,0,10,canvas.height)
-ctx.fillRect(canvas.width-10,0,10,canvas.height)
-
-roadOffset=(roadOffset+5)%40
-
-ctx.strokeStyle="white"
-ctx.setLineDash([20,20])
-ctx.lineDashOffset=-roadOffset
-
-for(let i=1;i<3;i++){
-
-ctx.beginPath()
-ctx.moveTo(i*laneWidth,0)
-ctx.lineTo(i*laneWidth,canvas.height)
-ctx.stroke()
-
-}
-
-let targetX=player.lane*laneWidth+(laneWidth/2-27)
-player.x+=((targetX-player.x)*0.2)
-
-drawCar(player,"red")
-
-if(Math.random()<0.03)spawnEnemy()
-
-enemies.forEach((e,i)=>{
-
-e.y+=e.speed
-
-drawCar(e,"blue")
-
-if(player.x<e.x+e.w &&
-player.x+player.w>e.x &&
-player.y<e.y+e.h &&
-player.h+player.y>e.y){
-
-explosion(e.x,e.y)
-
-gameRunning=false
-
-setTimeout(()=>{
-
-if(score>record){
-
-localStorage.setItem("record",Math.floor(score))
-
-}
-
-alert("GAME OVER\nPontos: "+Math.floor(score))
-
-location.reload()
-
-},500)
-
-}
-
-if(e.y>canvas.height){
-
-enemies.splice(i,1)
-score+=100
-
-}
-
-})
-
-score+=0.5
-
-if(score>2000)level=2
-if(score>5000)level=3
-if(score>8000)level=4
-
-document.getElementById("score").innerText="Score: "+Math.floor(score)
-
-requestAnimationFrame(loop)
-
-}
-
 </script>
-
 </body>
 </html>
