@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Asphalt Escape v10.1 - GMS Florestal</title>
+    <title>Asphalt Escape v10.2 - GMS Elite</title>
     <style>
         :root { --gms-green: #1b5e20; --gold: #f1c40f; --danger: #e74c3c; --road: #222; }
         body { margin: 0; background: #000; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; color: white; touch-action: none; user-select: none; }
@@ -40,23 +40,23 @@
     </div>
 
     <button class="btn-main" onclick="initGame()">CORRER AGORA</button>
-    
-    <div class="credits">
-        Criado por <b>Gustavo Moreira</b>,<br>
-        <a href="https://www.instagram.com/eng.florestalgustavoms" target="_blank" style="color: var(--gold); text-decoration: none;">@eng.florestalgustavoms</a>
-    </div>
-    <div style="position: absolute; bottom: 10px; opacity: 0.4; font-size: 10px;">v10.1 (Share Update)</div>
+    <div class="credits">Criado por <b>Gustavo Moreira</b> | GMS Florestal</div>
+    <div style="position: absolute; bottom: 10px; opacity: 0.4; font-size: 10px;">v10.2 (Anti-Paredão & Revive)</div>
 </div>
 
 <div id="menu-over" class="overlay" style="display: none;">
     <h1 id="medal-txt" style="margin: 0;">🥈 PRATA</h1>
-    <h2 style="font-size: 42px; margin: 10px 0;">PONTOS: <span id="final-score">0</span></h2>
+    <h2 style="font-size: 42px; margin: 10px 0;">PONTOS: <span id="final-score-val">0</span></h2>
     
-    <button class="btn-main" onclick="shareChallenge()" style="background: var(--gms-green); color: white; box-shadow: 0 5px 0 #0d3d14; width: 280px;">
+    <button id="btn-revive" class="btn-main" onclick="revive()" style="background: #3498db; color: white; box-shadow: 0 5px 0 #2980b9; display: none;">
+        CONTINUAR (300 🪙)
+    </button>
+
+    <button class="btn-main" onclick="shareChallenge()" style="background: var(--gms-green); color: white; box-shadow: 0 5px 0 #0d3d14; font-size: 16px;">
         DESAFIAR AMIGOS 🚀
     </button>
     
-    <button class="btn-main" onclick="initGame()" style="font-size: 16px;">TENTAR NOVAMENTE</button>
+    <button class="btn-main" onclick="initGame()" style="font-size: 16px; background: #666; color: white; box-shadow: 0 5px 0 #444;">NOVO JOGO</button>
 </div>
 
 <div id="ui">
@@ -65,8 +65,8 @@
         <div class="fuel-bar"><div id="fuel-fill"></div></div>
     </div>
     <div style="text-align: right;">
-        <div style="color: var(--gold); font-size: 20px;">🪙 <span id="coin-txt">0</span></div>
-        <div id="score-txt" style="font-weight: bold;">0</div>
+        <div style="color: var(--gold); font-size: 24px; font-weight: bold;">🪙 <span id="coin-txt">0</span></div>
+        <div id="score-txt" style="font-weight: bold; font-size: 20px;">0</div>
     </div>
 </div>
 
@@ -94,29 +94,33 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// --- SISTEMA DE COMPARTILHAMENTO NATIVO (NOVIDADE V10.1) ---
+// --- SISTEMA DE COMPARTILHAMENTO NATIVO ---
 async function shareChallenge() {
     const gameUrl = window.location.href; 
-    const shareText = `Desafio você a bater minha pontuação no Asphalt Escape! 🚗🔥\n\nMinha pontuação foi: ${Math.floor(score)}\n\nJogue aqui: ${gameUrl}\n\nCriado por @eng.florestalgustavoms`;
-
+    const shareText = `Desafio você a bater minha pontuação no Asphalt Escape! 🚗🔥\nMinha pontuação: ${Math.floor(score)}\n\nJogue aqui: ${gameUrl}`;
     if (navigator.share) {
-        try {
-            await navigator.share({
-                title: 'Desafio Asphalt Escape',
-                text: shareText,
-                url: gameUrl
-            });
-        } catch (err) {
-            console.log("Compartilhamento cancelado ou falhou.");
-        }
+        try { await navigator.share({ title: 'Desafio Asphalt Escape', text: shareText, url: gameUrl }); } 
+        catch (err) { console.log("Cancelado"); }
     } else {
-        // Fallback para WhatsApp caso o navegador não suporte Share API (ex: PC)
-        const msg = encodeURIComponent(shareText);
-        window.open(`https://api.whatsapp.com/send?text=${msg}`);
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`);
     }
 }
 
-// --- LOGICA DE RANKING ---
+// --- VIDA EXTRA ---
+function revive() {
+    if(coins >= 300) {
+        coins -= 300;
+        document.getElementById("coin-txt").innerText = coins;
+        fuel = 100;
+        enemies = [];
+        items = [];
+        document.getElementById("menu-over").style.display = "none";
+        document.getElementById("ui").style.display = "flex";
+        gameActive = true;
+        update();
+    }
+}
+
 function updateRanking(newScore) {
     let ranks = JSON.parse(localStorage.getItem('gms_ranks') || "[]");
     ranks.push(Math.floor(newScore));
@@ -128,23 +132,17 @@ function updateRanking(newScore) {
 
 function loadRanking() {
     const ranks = JSON.parse(localStorage.getItem('gms_ranks') || "[]");
-    const list = document.getElementById("ranking-list");
-    list.innerHTML = ranks.map((s, i) => `<li>${i+1}º - ${s} pts</li>`).join("");
+    document.getElementById("ranking-list").innerHTML = ranks.map((s, i) => `<li>${i+1}º - ${s} pts</li>`).join("");
 }
 loadRanking();
 
 function updateTargetX() { player.targetX = (player.lane * (canvas.width / 3)) + (canvas.width / 6) - (player.w / 2); }
 function movePlayer(dir) { if(!gameActive) return; player.lane = Math.max(0, Math.min(2, player.lane + dir)); updateTargetX(); }
 
-function spawnScenery() {
-    if(Math.random() < 0.1) {
-        scenery.push({ x: Math.random() < 0.5 ? 5 : canvas.width - 25, y: -50, type: Math.random() > 0.5 ? '🌵' : '🌳' });
-    }
-}
-
 function initGame() {
     score = 0; speed = 7; fuel = 100; coins = 0; enemies = []; items = []; scenery = []; particles = [];
     player.lane = 1; updateTargetX(); player.x = player.targetX;
+    document.getElementById("coin-txt").innerText = "0";
     document.getElementById("menu-main").style.display = "none";
     document.getElementById("menu-over").style.display = "none";
     document.getElementById("ui").style.display = "flex";
@@ -154,7 +152,6 @@ function initGame() {
 }
 
 function drawVehicle(v) {
-    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(v.x + 5, v.y + 5, v.w, v.h);
     ctx.fillStyle = v.color || "#444";
     ctx.beginPath(); ctx.roundRect(v.x, v.y, v.w, v.h, 8); ctx.fill();
     if(v.isEasterEgg) {
@@ -165,27 +162,18 @@ function drawVehicle(v) {
     ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(v.x+8, v.y+10, v.w-16, 22);
 }
 
-function explode() {
-    for(let i=0; i<20; i++) {
-        particles.push({
-            x: player.x + 25, y: player.y + 40,
-            vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10,
-            size: Math.random()*8, color: Math.random() > 0.5 ? "#f1c40f" : "#e74c3c"
-        });
-    }
-}
-
 function update() {
-    if(!gameActive && particles.length === 0) return;
+    if(!gameActive) return;
     ctx.fillStyle = "#222"; ctx.fillRect(0,0,canvas.width, canvas.height);
     
+    // Scenery (Cerrado)
+    if(Math.random() < 0.1) scenery.push({ x: Math.random() < 0.5 ? 5 : canvas.width - 25, y: -50, type: Math.random() > 0.5 ? '🌵' : '🌳' });
     scenery.forEach((s, i) => {
-        s.y += speed;
-        ctx.font = "20px Arial"; ctx.fillText(s.type, s.x, s.y);
+        s.y += speed; ctx.font = "20px Arial"; ctx.fillText(s.type, s.x, s.y);
         if(s.y > canvas.height) scenery.splice(i, 1);
     });
-    spawnScenery();
 
+    // Road Lines
     ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.setLineDash([40, 60]);
     ctx.lineDashOffset = -(score * 10);
     for(let i=1; i<3; i++) {
@@ -195,31 +183,30 @@ function update() {
     player.x += (player.targetX - player.x) * 0.2;
     drawVehicle({...player, color: "#e74c3c"});
 
-    if(Math.random() < 0.03) {
-        let lane = Math.floor(Math.random()*3);
-        items.push({ type: Math.random() > 0.8 ? 'gas' : 'coin', x: (lane * (canvas.width/3)) + (canvas.width/6), y: -50, lane });
-    }
+    // Items (Coins & Gas)
+    if(Math.random() < 0.03) items.push({ type: Math.random() > 0.8 ? 'gas' : 'coin', x: (Math.floor(Math.random()*3) * (canvas.width/3)) + (canvas.width/6), y: -50 });
     
     items.forEach((it, i) => {
         it.y += speed; ctx.font = "20px Arial"; ctx.fillText(it.type === 'coin' ? '🪙' : '⛽', it.x-10, it.y);
         if(Math.hypot(player.x+25 - it.x, player.y+40 - it.y) < 40) {
-            if(it.type === 'coin') score += 100;
+            if(it.type === 'coin') { coins += 10; document.getElementById("coin-txt").innerText = coins; }
             else fuel = Math.min(100, fuel + 30);
             items.splice(i, 1);
         }
     });
 
+    // --- LÓGICA ANTI-PAREDÃO ---
     if(Math.random() < 0.02 + (score/100000)) {
         let lane = Math.floor(Math.random()*3);
-        if(!enemies.some(e => e.lane === lane && e.y < 300)) {
+        // Verifica se a faixa tá livre e se não existem já 2 carros no topo (evita trancar as 3 faixas)
+        let topEnemies = enemies.filter(e => e.y < 250);
+        if(!enemies.some(e => e.lane === lane && e.y < 350) && topEnemies.length < 2) {
             let isEasterEgg = Math.random() < 0.02;
             let isLarge = score > 5000 && Math.random() > 0.8;
             enemies.push({
-                lane, x: (lane * (canvas.width/3)) + (canvas.width/6) - (isLarge ? 40 : 25),
+                lane, x: (lane * (canvas.width / 3)) + (canvas.width / 6) - (isLarge ? 40 : 25),
                 y: -200, w: isLarge ? 80 : 50, h: isEasterEgg || isLarge ? 160 : 85,
-                color: isEasterEgg ? "#1b5e20" : "#2980b9",
-                type: (isEasterEgg || isLarge) ? 'truck' : 'car',
-                isEasterEgg, speed: 2 + Math.random()*2
+                color: isEasterEgg ? "#1b5e20" : "#2980b9", isEasterEgg, speed: 2 + Math.random()*2
             });
         }
     }
@@ -231,16 +218,10 @@ function update() {
         }
         if(e.isEasterEgg && e.y > player.y && !e.done) {
             score += 5000; e.done = true;
-            const b = document.getElementById("msg-box"); b.style.display = "block";
-            setTimeout(() => b.style.display = "none", 2500);
+            document.getElementById("msg-box").style.display = "block";
+            setTimeout(() => document.getElementById("msg-box").style.display = "none", 2500);
         }
         if(e.y > canvas.height) enemies.splice(i, 1);
-    });
-
-    particles.forEach((p, i) => {
-        p.x += p.vx; p.y += p.vy; p.size *= 0.95;
-        ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
-        if(p.size < 0.5) particles.splice(i, 1);
     });
 
     if(gameActive) {
@@ -255,16 +236,21 @@ function update() {
 }
 
 function gameOver() {
-    gameActive = false; explode(); updateRanking(score);
-    setTimeout(() => {
-        document.getElementById("menu-over").style.display = "flex";
-        document.getElementById("final-score").innerText = Math.floor(score);
-        let m = "🥉 BRONZE";
-        if(score >= 10000) m = "👑 LENDA";
-        else if(score >= 6000) m = "🥇 OURO";
-        else if(score >= 3000) m = "🥈 PRATA";
-        document.getElementById("medal-txt").innerText = m;
-    }, 1000);
+    gameActive = false;
+    updateRanking(score);
+    document.getElementById("menu-over").style.display = "flex";
+    document.getElementById("final-score-val").innerText = Math.floor(score);
+    
+    // Exibe botão de reviver se tiver moedas
+    const btnRevive = document.getElementById("btn-revive");
+    if(coins >= 300) btnRevive.style.display = "block";
+    else btnRevive.style.display = "none";
+
+    let m = "🥉 BRONZE";
+    if(score >= 10000) m = "👑 LENDA";
+    else if(score >= 6000) m = "🥇 OURO";
+    else if(score >= 3000) m = "🥈 PRATA";
+    document.getElementById("medal-txt").innerText = m;
 }
 </script>
 </body>
