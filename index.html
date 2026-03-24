@@ -95,7 +95,36 @@ function resize() {
     updateTargetX();
 }
 window.addEventListener('resize', resize);
-resize();
+resize();// --- NOVOS CONTROLES DE TOQUE (Mobile) ---
+
+canvas.addEventListener("touchstart", (e) => {
+    if(!gameActive) return;
+    e.preventDefault(); // Evita scroll acidental
+    
+    const touchX = e.touches[0].clientX;
+    const screenWidth = window.innerWidth;
+
+    // Lógica de Faixas: Divide a tela em 3 partes
+    if (touchX < screenWidth / 3) {
+        movePlayer(-1); // Toque na esquerda
+    } else if (touchX > (screenWidth / 3) * 2) {
+        movePlayer(1);  // Toque na direita
+    }
+    
+    // Inicia aceleração ao tocar em qualquer lugar
+    isAccelerating = true;
+}, { passive: false });
+
+canvas.addEventListener("touchend", (e) => {
+    if(!gameActive) return;
+    // Para de acelerar quando solta a tela
+    isAccelerating = false;
+});
+
+// Suporte para movimento contínuo se o usuário deslizar o dedo
+canvas.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+}, { passive: false });
 
 // --- CONTROLES DE TECLADO (Notebook) ---
 window.addEventListener("keydown", (e) => {
